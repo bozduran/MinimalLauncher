@@ -7,6 +7,7 @@ import com.example.minimallauncher.data.AppInfo
 import com.example.minimallauncher.data.AppRepository
 import com.example.minimallauncher.data.SettingsRepository
 import com.example.minimallauncher.data.TextNormalizer
+import com.example.minimallauncher.ui.theme.DEFAULT_THEME_KEY
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +41,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     val use24h: StateFlow<Boolean> = settingsRepo.use24h
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    val themeKey: StateFlow<String> = settingsRepo.themeKey
+        .stateIn(viewModelScope, SharingStarted.Eagerly, DEFAULT_THEME_KEY)
 
     val favoriteSet: StateFlow<Set<String>> = favoritePkgs
         .map { it.toSet() }
@@ -86,4 +90,5 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleFavorite(pkg: String) = viewModelScope.launch { settingsRepo.toggleFavorite(pkg) }
     fun toggleHidden(pkg: String) = viewModelScope.launch { settingsRepo.toggleHidden(pkg) }
     fun setUse24h(v: Boolean) = viewModelScope.launch { settingsRepo.setUse24h(v) }
+    fun setTheme(key: String) = viewModelScope.launch { settingsRepo.setTheme(key) }
 }

@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.minimallauncher.ui.theme.DEFAULT_THEME_KEY
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -18,6 +19,7 @@ class SettingsRepository(private val context: Context) {
         val FAVORITES = stringPreferencesKey("favorites")
         val HIDDEN = stringSetPreferencesKey("hidden")
         val USE_24H = booleanPreferencesKey("use_24h")
+        val THEME = stringPreferencesKey("theme")
     }
 
     val favorites: Flow<List<String>> = context.dataStore.data.map { prefs ->
@@ -27,6 +29,9 @@ class SettingsRepository(private val context: Context) {
     val hidden: Flow<Set<String>> = context.dataStore.data.map { it[Keys.HIDDEN] ?: emptySet() }
 
     val use24h: Flow<Boolean> = context.dataStore.data.map { it[Keys.USE_24H] ?: true }
+
+    val themeKey: Flow<String> =
+        context.dataStore.data.map { it[Keys.THEME] ?: DEFAULT_THEME_KEY }
 
     suspend fun toggleFavorite(pkg: String) {
         context.dataStore.edit { prefs ->
@@ -48,5 +53,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setUse24h(value: Boolean) {
         context.dataStore.edit { it[Keys.USE_24H] = value }
+    }
+
+    suspend fun setTheme(key: String) {
+        context.dataStore.edit { it[Keys.THEME] = key }
     }
 }
