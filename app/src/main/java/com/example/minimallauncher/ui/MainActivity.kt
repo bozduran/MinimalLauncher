@@ -8,6 +8,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.VerticalPager
@@ -103,7 +104,7 @@ private fun LauncherRoot(vm: LauncherViewModel) {
         ) { page ->
             when (page) {
                 0 -> HomeScreen(vm = vm, onOpenSettings = { showSettings = true })
-                else -> DrawerScreen(vm = vm)
+                else -> DrawerScreen(vm = vm, active = pagerState.currentPage == 1)
             }
         }
     }
