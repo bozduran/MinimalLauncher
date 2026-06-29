@@ -1,17 +1,26 @@
 package com.example.minimallauncher.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -20,13 +29,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.minimallauncher.data.AppLauncher
 import com.example.minimallauncher.ui.theme.Accent
 import com.example.minimallauncher.ui.theme.AccentRing
+import com.example.minimallauncher.ui.theme.AppThemes
 import com.example.minimallauncher.ui.theme.Bg
 import com.example.minimallauncher.ui.theme.BorderCol
 import com.example.minimallauncher.ui.theme.BorderMid
@@ -42,6 +55,7 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
     val favorites by vm.favoriteSet.collectAsStateCompat()
     val hidden by vm.hiddenSet.collectAsStateCompat()
     val use24h by vm.use24h.collectAsStateCompat()
+    val themeKey by vm.themeKey.collectAsStateCompat()
 
     Column(
         modifier = Modifier
@@ -77,6 +91,12 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
             item {
                 ToggleRow("24-hour clock", use24h) { vm.setUse24h(it) }
                 ActionRow("set as default launcher") { AppLauncher.openHomeSettings(context) }
+                SectionLabel("theme")
+            }
+            item {
+                ThemePicker(current = themeKey, onSelect = { vm.setTheme(it) })
+            }
+            item {
                 SectionLabel("favorites — tap to toggle")
             }
             items(apps, key = { it.key }) { app ->
@@ -116,6 +136,65 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
             }
         }
     }
+}
+
+@Composable
+private fun ThemePicker(current: String, onSelect: (String) -> Unit) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 28.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(AppThemes, key = { it.key }) { opt ->
+            val selected = opt.key == current
+            Column(
+                modifier = Modifier
+                    .width(98.dp)
+                    .clickable { onSelect(opt.key) },
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(opt.palette.bg)
+                        .border(
+                            width = if (selected) 2.dp else 1.dp,
+                            color = if (selected) opt.palette.accent else opt.palette.borderMid,
+                            shape = RoundedCornerShape(10.dp),
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Dot(opt.palette.accent)
+                        Dot(opt.palette.accentSoft)
+                        Dot(opt.palette.text)
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = opt.label,
+                    fontFamily = JetBrainsMono,
+                    fontSize = 11.sp,
+                    color = if (selected) Accent else TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun Dot(color: Color) {
+    Box(
+        modifier = Modifier
+            .size(11.dp)
+            .clip(CircleShape)
+            .background(color),
+    )
 }
 
 @Composable

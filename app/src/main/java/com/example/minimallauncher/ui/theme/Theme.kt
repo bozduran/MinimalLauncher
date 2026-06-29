@@ -2,25 +2,49 @@ package com.example.minimallauncher.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-
-private val DarkColors = darkColorScheme(
-    background = Bg,
-    surface = SurfaceCol,
-    surfaceVariant = Surface2,
-    onBackground = TextPrimary,
-    onSurface = TextPrimary,
-    primary = Accent,
-    onPrimary = Bg,
-    secondary = AccentSoft,
-    outline = BorderCol,
-)
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.luminance
 
 @Composable
-fun MinimalLauncherTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = DarkColors,
-        typography = AppTypography,
-        content = content,
-    )
+fun MinimalLauncherTheme(
+    palette: LauncherPalette,
+    content: @Composable () -> Unit,
+) {
+    val isDark = palette.bg.luminance() < 0.5f
+
+    val scheme = if (isDark) {
+        darkColorScheme(
+            background = palette.bg,
+            surface = palette.surface,
+            surfaceVariant = palette.surface2,
+            onBackground = palette.text,
+            onSurface = palette.text,
+            primary = palette.accent,
+            onPrimary = palette.bg,
+            secondary = palette.accentSoft,
+            outline = palette.border,
+        )
+    } else {
+        lightColorScheme(
+            background = palette.bg,
+            surface = palette.surface,
+            surfaceVariant = palette.surface2,
+            onBackground = palette.text,
+            onSurface = palette.text,
+            primary = palette.accent,
+            onPrimary = palette.bg,
+            secondary = palette.accentSoft,
+            outline = palette.border,
+        )
+    }
+
+    CompositionLocalProvider(LocalPalette provides palette) {
+        MaterialTheme(
+            colorScheme = scheme,
+            typography = AppTypography,
+            content = content,
+        )
+    }
 }

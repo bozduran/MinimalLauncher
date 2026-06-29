@@ -25,19 +25,33 @@ import androidx.compose.ui.platform.LocalFocusManager
 import com.example.minimallauncher.ui.theme.Bg
 import com.example.minimallauncher.ui.theme.MinimalLauncherTheme
 import kotlinx.coroutines.launch
-
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.luminance
+import com.example.minimallauncher.ui.theme.paletteFor
 class MainActivity : ComponentActivity() {
 
     private val vm: LauncherViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-        )
+        enableEdgeToEdge()
         setContent {
-            MinimalLauncherTheme {
+            val themeKey by vm.themeKey.collectAsState()
+            val palette = remember(themeKey) { paletteFor(themeKey) }
+
+            // Keep system-bar icons readable on both light and dark themes.
+            LaunchedEffect(palette) {
+                val transparent = android.graphics.Color.TRANSPARENT
+                val style = if (palette.bg.luminance() < 0.5f) {
+                    SystemBarStyle.dark(transparent)
+                } else {
+                    SystemBarStyle.light(transparent, transparent)
+                }
+                enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+            }
+
+            MinimalLauncherTheme(palette = palette) {
                 LauncherRoot(vm)
             }
         }
