@@ -1,6 +1,11 @@
 package com.example.minimallauncher.ui
 
 import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.minimallauncher.data.AppInfo
@@ -67,8 +72,34 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 .toList()
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    // Refresh the app list live whenever a package is added/removed/changed.
+    private val packageReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            refresh()
+        }
+    }
+
     init {
         refresh()
+
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_CHANGED)
+            addAction(Intent.ACTION_PACKAGE_REPLACED)
+            addDataScheme("package")
+        }
+        ContextCompat.registerReceiver(
+            getApplication(),
+            packageReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        runCatching { getApplication<Application>().unregisterReceiver(packageReceiver) }
     }
 
     fun refresh() {

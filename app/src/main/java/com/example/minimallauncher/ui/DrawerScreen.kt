@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,13 +19,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,15 +43,47 @@ import com.example.minimallauncher.ui.theme.JetBrainsMono
 import com.example.minimallauncher.ui.theme.SurfaceCol
 import com.example.minimallauncher.ui.theme.TextPrimary
 import com.example.minimallauncher.ui.theme.TextSecondary
-import com.example.minimallauncher.ui.theme.TextTertiary
+import kotlinx.coroutines.delay
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun DrawerScreen(vm: LauncherViewModel) {
+fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
     val context = LocalContext.current
     val apps by vm.drawerApps.collectAsStateCompat()
     val query by vm.query.collectAsStateCompat()
     val favorites by vm.favoriteSet.collectAsStateCompat()
     var menuApp by remember { mutableStateOf<AppInfo?>(null) }
+
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val latestApps by rememberUpdatedState(apps)
+    var lastLaunched by remember { mutableStateOf<String?>(null) }
+
+    // Auto-focus the search box + show keyboard when the drawer is the active page.
+    LaunchedEffect(active) {
+        if (active) {
+            delay(100) // let the field finish laying out before we focus it
+            runCatching { focusRequester.requestFocus() }
+            keyboard?.show()
+        } else {
+            keyboard?.hide()
+        }
+    }
+
+    // Auto-launch when the query narrows to exactly one app (debounced so it
+    // doesn't fire mid-typing, and guarded so it won't relaunch on return).
+    LaunchedEffect(query) {
+        if (query.isBlank()) {
+            lastLaunched = null
+            return@LaunchedEffect
+        }
+        delay(350)
+        val results = latestApps
+        if (results.size == 1 && query != lastLaunched) {
+            lastLaunched = query
+            AppLauncher.launch(context, results.first())
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -61,6 +96,8 @@ fun DrawerScreen(vm: LauncherViewModel) {
             query = query,
             onChange = vm::setQuery,
             modifier = Modifier.padding(horizontal = 28.dp, vertical = 14.dp),
+            focusRequester = focusRequester,
+            onSearch = { latestApps.firstOrNull()?.let { AppLauncher.launch(context, it) } },
         )
         HorizontalDivider(color = BorderCol, thickness = 1.dp)
 
