@@ -1,0 +1,9 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- minimalist dot, terracotta accent, inside the 66dp safe zone -->
+    <path android:fillColor="#D2664A"
+        android:pathData="M54,40 a14,14 0 1,0 0.01,0 z"/>
+    <path android:fillColor="#E0A45C"
+        android:pathData="M40,70 h28 v3 h-28 z"/>
+</vector>

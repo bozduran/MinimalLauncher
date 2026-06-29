@@ -1,0 +1,48 @@
+# ---- Built artifacts ----
+*.apk
+*.aab
+*.ap_
+*.aar
+*.dex
+*.class
+bin/
+gen/
+out/
+build/
+captures/
+release/
+
+# ---- Gradle ----
+.gradle/
+# Keep the wrapper itself (gradlew, gradlew.bat, gradle-wrapper.properties/jar)
+# but ignore any downloaded distributions
+gradle-app.setting
+.gradletasknamecache
+
+# ---- Local config (machine-specific, must NOT be committed) ----
+local.properties
+keystore.properties
+
+# ---- Android Studio / IntelliJ ----
+.idea/
+*.iml
+*.ipr
+*.iws
+.navigation/
+.cxx/
+
+# ---- Signing / secrets ----
+*.jks
+*.keystore
+
+# ---- NDK / native ----
+.externalNativeBuild/
+obj/
+
+# ---- Logs / misc ----
+*.log
+.DS_Store
+Thumbs.db
+
+# ---- Optional: Compose / KSP / kapt generated ----
+# (these live under build/, already ignored, but listed for clarity)
