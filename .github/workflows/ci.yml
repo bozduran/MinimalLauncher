@@ -43,7 +43,18 @@ jobs:
 
       - name: Lint
         run: ./gradlew lintDebug --stacktrace
-        continue-on-error: true # PLAT-4 makes this blocking once the baseline lands
+
+      # QA-3: the Compose UI suite cannot run on the build machine, so it runs on an
+      # emulator here. This is the only place the instrumented tests are executed;
+      # they are deliberately not runnable locally in every environment.
+      - name: Instrumented UI tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: default
+          arch: x86_64
+          profile: pixel_5
+          script: ./gradlew connectedDebugAndroidTest --stacktrace
 
       - name: Upload test reports
         if: always()
@@ -56,8 +67,8 @@ jobs:
             app/build/test-results/
           if-no-files-found: ignore
 
-# Not wired up yet (see USER_STORIES.md):
-#   - QA-3 instrumented Compose UI tests need an emulator job
-#     (reactivecircus/android-emulator-runner) and are therefore not required here.
+# Still not wired up (see USER_STORIES.md):
 #   - A release signing/upload job needs keystore secrets; assembleRelease above
 #     deliberately produces an unsigned artifact so it can run without them.
+#   - PERF-3 baseline profiles would be generated and measured in this pipeline once
+#     the profile module exists.
