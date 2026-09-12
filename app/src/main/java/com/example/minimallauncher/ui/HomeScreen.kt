@@ -56,6 +56,8 @@ fun HomeScreen(
     val context = LocalContext.current
     val favorites by vm.favorites.collectAsStateCompat()
     val use24h by vm.use24h.collectAsStateCompat()
+    val isLoadingApps by vm.isLoadingApps.collectAsStateCompat()
+    val appListError by vm.appListError.collectAsStateCompat()
     val now by rememberCurrentTime()
 
     val timePattern = if (use24h) "HH:mm" else "h:mm"
@@ -94,14 +96,26 @@ fun HomeScreen(
 
         Spacer(Modifier.height(54.dp))
 
+        // Only tell the user they have no favorites once we actually know: the
+        // onboarding copy must not appear while the first load is still running.
         if (favorites.isEmpty()) {
-            Text(
-                text = "no favorites yet\nlong-press anywhere to open settings",
-                fontFamily = JetBrainsMono,
-                fontSize = 13.sp,
-                lineHeight = 20.sp,
-                color = TextTertiary,
-            )
+            when {
+                isLoadingApps -> Unit
+                appListError != null -> Text(
+                    text = "couldn't load your apps\nlong-press anywhere to open settings",
+                    fontFamily = JetBrainsMono,
+                    fontSize = 13.sp,
+                    lineHeight = 20.sp,
+                    color = TextTertiary,
+                )
+                else -> Text(
+                    text = "no favorites yet\nlong-press anywhere to open settings",
+                    fontFamily = JetBrainsMono,
+                    fontSize = 13.sp,
+                    lineHeight = 20.sp,
+                    color = TextTertiary,
+                )
+            }
         } else {
             favorites.forEach { app ->
                 Text(

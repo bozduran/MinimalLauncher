@@ -58,6 +58,17 @@ class LauncherViewModel(
     val appListError: StateFlow<Throwable?> = _appListError.asStateFlow()
 
     /**
+     * True until the first app-list load attempt finishes.
+     *
+     * Without this the "no favorites yet" onboarding copy was shown during every
+     * cold start, because "0 favorites" and "not loaded yet" were the same value.
+     * Deliberately only true for the *first* load: a later refresh keeps the
+     * previous list on screen rather than flashing an empty state.
+     */
+    private val _isLoadingApps = MutableStateFlow(true)
+    val isLoadingApps: StateFlow<Boolean> = _isLoadingApps.asStateFlow()
+
+    /**
      * Non-null while stored settings could not be read (defaults are in use) or a
      * settings write failed. Dismissible by the user.
      */
@@ -213,13 +224,16 @@ class LauncherViewModel(
             val apps = withContext(ioDispatcher) { appRepo.loadApps() }
             allAppsFlow.value = apps
             _appListError.value = null
+            _isLoadingApps.value = false
         } catch (cancelled: CancellationException) {
-            // Superseded by a newer request — not a failure.
+            // Superseded by a newer request — not a failure, and not "loaded":
+            // leave the loading flag alone for the replacement load to clear.
             throw cancelled
         } catch (error: Exception) {
             // Keep the last known good list on screen and report the failure.
             logger.record(TAG_APP_LIST, error, "app list load failed")
             _appListError.value = error
+            _isLoadingApps.value = false
         }
     }
 

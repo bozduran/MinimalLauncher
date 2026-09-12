@@ -117,6 +117,82 @@ class LauncherViewModelTest {
         assertEquals(2, vm.allApps.value.size)
     }
 
+    // ── STAB-7: no false empty state while loading ──────────────────────────
+
+    @Test
+    fun `the app list reports loading before the first load completes`() = runTest(dispatcher) {
+        val vm = viewModel(appRepo = FakeAppRepository(listOf(app("Chrome"))))
+
+        assertTrue(vm.isLoadingApps.value)
+    }
+
+    @Test
+    fun `loading ends after a successful first load`() = runTest(dispatcher) {
+        val vm = viewModel(appRepo = FakeAppRepository(listOf(app("Chrome"))))
+
+        advanceUntilIdle()
+
+        assertEquals(false, vm.isLoadingApps.value)
+    }
+
+    @Test
+    fun `loading ends after a failed first load`() = runTest(dispatcher) {
+        val repo = FakeAppRepository().apply { failure = RuntimeException("boom") }
+        val vm = viewModel(appRepo = repo)
+
+        advanceUntilIdle()
+
+        assertEquals(false, vm.isLoadingApps.value)
+        assertNotNull(vm.appListError.value)
+    }
+
+    @Test
+    fun `a later refresh does not flip the screen back into loading`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome")))
+        val vm = viewModel(appRepo = repo)
+        advanceUntilIdle()
+        assertEquals(false, vm.isLoadingApps.value)
+
+        vm.refresh()
+        testScheduler.advanceTimeBy(300)
+        testScheduler.runCurrent()
+
+        assertEquals("refresh must not flash an empty state", false, vm.isLoadingApps.value)
+        assertEquals(
+            "the previously loaded list stays visible across a refresh",
+            listOf("Chrome"),
+            vm.allApps.value.map { it.label },
+        )
+    }
+
+    @Test
+    fun `a superseded first load keeps the loading state for its replacement`() =
+        runTest(dispatcher) {
+            val repo = FakeAppRepository(listOf(app("Chrome")))
+            val vm = viewModel(appRepo = repo)
+
+            val gate1 = repo.gateNextLoad()
+            val gate2 = repo.gateNextLoad()
+            testScheduler.runCurrent() // initial load starts, blocked on gate1
+            assertTrue(vm.isLoadingApps.value)
+
+            vm.refresh() // supersedes the first load
+            testScheduler.advanceTimeBy(300)
+            testScheduler.runCurrent() // replacement starts, blocked on gate2
+
+            assertTrue(
+                "cancelling a load must not report the list as loaded",
+                vm.isLoadingApps.value,
+            )
+
+            gate1.complete(Unit)
+            gate2.complete(Unit)
+            advanceUntilIdle()
+
+            assertEquals(false, vm.isLoadingApps.value)
+            assertEquals(listOf("Chrome"), vm.allApps.value.map { it.label })
+        }
+
     // ── DRAW-1: auto-launch only on deliberate input, exactly once ──────────
 
     /** Collects every launch the ViewModel requests. */
