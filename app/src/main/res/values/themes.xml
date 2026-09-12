@@ -1,8 +1,39 @@
-<resources>
-    <style name="Theme.MinimalLauncher" parent="android:Theme.Material.NoActionBar">
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!--
+      Launch themes.
+
+      The OS paints windowBackground before the app's first frame, so this cannot
+      come from DataStore (which is asynchronous). MainActivity calls setTheme() with
+      the variant matching the user's saved palette before super.onCreate, so the
+      launch window already matches the chosen theme instead of always flashing the
+      dark one with light status-bar icons.
+
+      Keep these in sync with Color.kt: the dark variant mirrors WarmDark (#1C1A17),
+      the light variant mirrors Paper (#F4F1EA).
+    -->
+    <style name="Theme.MinimalLauncher.Launch.Dark" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/bg</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
+        <!-- API 27+; unknown attributes are ignored by older platforms. -->
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
     </style>
+
+    <style name="Theme.MinimalLauncher.Launch.Light" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/bg_light</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <!-- API 27+; unknown attributes are ignored by older platforms. -->
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
+    </style>
+
+    <!--
+      The theme the manifest points at. It only covers the window between process
+      start and onCreate, and MainActivity immediately replaces it with one of the
+      launch themes above. Dark is the safe default since it is also the default
+      palette.
+    -->
+    <style name="Theme.MinimalLauncher" parent="Theme.MinimalLauncher.Launch.Dark" />
 </resources>

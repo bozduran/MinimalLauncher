@@ -27,6 +27,9 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import com.example.minimallauncher.ui.theme.Bg
+import com.example.minimallauncher.R
+import com.example.minimallauncher.ui.theme.LaunchTheme
+import com.example.minimallauncher.ui.theme.LaunchThemeStore
 import com.example.minimallauncher.ui.theme.MinimalLauncherTheme
 import com.example.minimallauncher.ui.theme.paletteFor
 import kotlinx.coroutines.launch
@@ -35,27 +38,46 @@ class MainActivity : ComponentActivity() {
 
     private val vm: LauncherViewModel by viewModels { LauncherViewModelFactory(application) }
 
+    /** Reads the saved theme without DataStore, so the launch window can match it. */
+    private val launchThemeStore by lazy { LaunchThemeStore(this) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Must run before super.onCreate so the launch window already has the right
+        // background and system-bar icon colour; otherwise a light-theme user sees a
+        // dark flash with light icons on the first frame of every Home press.
+        setTheme(
+            when (launchThemeStore.launchTheme()) {
+                LaunchTheme.Dark -> R.style.Theme_MinimalLauncher_Launch_Dark
+                LaunchTheme.Light -> R.style.Theme_MinimalLauncher_Launch_Light
+            },
+        )
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
+        // Applied once, with styles matching the launch theme. A later theme change is
+        // handled by the effect below, which skips the first composition.
+        enableEdgeToEdge(systemBarStyleFor(launchThemeStore.launchTheme()))
+
         setContent {
             val themeKey = vm.uiState.collectAsState().value.themeKey
             val palette = remember(themeKey) { paletteFor(themeKey) }
 
-            // Keep system-bar icons readable on both light and dark themes.
+            // Keep system-bar icons readable when the user switches between a light and
+            // a dark theme at runtime.
             LaunchedEffect(palette) {
-                val transparent = android.graphics.Color.TRANSPARENT
-                val style = if (palette.bg.luminance() < 0.5f) {
-                    SystemBarStyle.dark(transparent)
-                } else {
-                    SystemBarStyle.light(transparent, transparent)
-                }
-                enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+                enableEdgeToEdge(systemBarStyleFor(LaunchTheme.forBackground(palette.bg)))
             }
 
             MinimalLauncherTheme(palette = palette) {
                 LauncherRoot(vm)
             }
+        }
+    }
+
+    private fun systemBarStyleFor(theme: LaunchTheme): SystemBarStyle {
+        val transparent = android.graphics.Color.TRANSPARENT
+        return when (theme) {
+            LaunchTheme.Dark -> SystemBarStyle.dark(transparent)
+            LaunchTheme.Light -> SystemBarStyle.light(transparent, transparent)
         }
     }
 

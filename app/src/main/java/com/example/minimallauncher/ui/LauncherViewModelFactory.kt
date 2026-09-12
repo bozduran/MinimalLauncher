@@ -12,6 +12,7 @@ import com.example.minimallauncher.data.LogcatAppLogger
 import com.example.minimallauncher.data.PackageChangeSource
 import com.example.minimallauncher.data.PackageManagerAppRepository
 import com.example.minimallauncher.data.dataStore
+import com.example.minimallauncher.ui.theme.LaunchThemeStore
 
 /**
  * Supplies production dependencies to [LauncherViewModel].
@@ -45,9 +46,13 @@ class LauncherViewModelFactory(
         // One logger instance so app-enumeration skips and ViewModel failures share
         // a tag prefix.
         val logger = LogcatAppLogger()
+        val launchThemeStore = LaunchThemeStore(application)
         return LauncherViewModel(
             appRepo = PackageManagerAppRepository(application, logger),
-            settingsRepo = DataStoreSettingsRepository(application.dataStore),
+            settingsRepo = DataStoreSettingsRepository(
+                dataStore = application.dataStore,
+                launchThemeMirror = launchThemeStore::saveThemeKey,
+            ),
             appChangeSource = PackageChangeSource(application),
             gateway = AndroidLauncherGateway(application),
             savedState = savedState,

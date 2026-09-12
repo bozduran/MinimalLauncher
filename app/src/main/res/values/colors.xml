@@ -1,4 +1,8 @@
 <resources>
-    <!-- Launch-window background; kept in sync with the warm-dark palette. -->
+    <!--
+      Launch-window backgrounds, used before the first frame is drawn. Must stay in
+      sync with Color.kt: bg mirrors WarmDark.bg, bg_light mirrors Paper.bg.
+    -->
     <color name="bg">#1C1A17</color>
+    <color name="bg_light">#F4F1EA</color>
 </resources>

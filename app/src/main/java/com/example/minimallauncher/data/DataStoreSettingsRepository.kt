@@ -30,6 +30,14 @@ val Context.dataStore by preferencesDataStore(name = "launcher_settings")
  */
 class DataStoreSettingsRepository(
     private val dataStore: DataStore<Preferences>,
+    /**
+     * Optional synchronous mirror of the theme key.
+     *
+     * DataStore is the source of truth, but it cannot be read during
+     * `Activity.onCreate`, which is exactly when the launch window needs to know
+     * whether to be light or dark.
+     */
+    private val launchThemeMirror: ((String) -> Unit)? = null,
 ) : SettingsRepository {
 
     private object Keys {
@@ -98,6 +106,7 @@ class DataStoreSettingsRepository(
 
     override suspend fun setTheme(key: String) {
         dataStore.edit { it[Keys.THEME] = key }
+        launchThemeMirror?.invoke(key)
     }
 
     override suspend fun pruneMissing(installed: Set<String>) {
