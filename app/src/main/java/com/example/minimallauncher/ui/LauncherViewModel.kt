@@ -2,7 +2,6 @@ package com.example.minimallauncher.ui
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.minimallauncher.data.AppChangeSource
 import com.example.minimallauncher.data.AppInfo
 import com.example.minimallauncher.data.AppLogger
@@ -14,7 +13,11 @@ import com.example.minimallauncher.data.TextNormalizer
 import com.example.minimallauncher.ui.theme.DEFAULT_THEME_KEY
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
@@ -57,13 +60,31 @@ class LauncherViewModel(
     private val logger: AppLogger = LogcatAppLogger(),
 ) : ViewModel() {
 
+    /**
+     * A scope with a [CoroutineExceptionHandler].
+     *
+     * `scope` is backed by a `SupervisorJob`, which contains sibling
+     * cancellation but installs no exception handler: an unguarded throw inside a
+     * `launch` still reaches the thread's uncaught handler and kills the process.
+     * Every suspend entry point in this class handles its own failures, but this
+     * handler means a future one that forgets cannot take the device's home screen
+     * down with it — it is logged instead.
+     */
+    private val scope = CoroutineScope(
+        SupervisorJob() +
+            Dispatchers.Main.immediate +
+            CoroutineExceptionHandler { _, error ->
+                logger.record(TAG_UNCAUGHT, error, "uncaught coroutine failure")
+            },
+    )
+
     private val allAppsFlow = MutableStateFlow<List<AppInfo>>(emptyList())
     val allApps: StateFlow<List<AppInfo>> = allAppsFlow.asStateFlow()
 
     /**
      * Last app-list load failure, or null when the list is current.
      *
-     * Surfaced instead of thrown: an uncaught exception inside `viewModelScope`
+     * Surfaced instead of thrown: an uncaught exception inside `scope`
      * (which only has a `SupervisorJob`, not an exception handler) would kill the
      * process, and this app *is* the device's home screen.
      */
@@ -133,19 +154,19 @@ class LauncherViewModel(
     private var lastAutoLaunchedPackage: String? = null
 
     private val favoritePkgs = settingsRepo.favorites
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        .stateIn(scope, SharingStarted.Eagerly, emptyList())
     private val hiddenPkgs = settingsRepo.hidden
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+        .stateIn(scope, SharingStarted.Eagerly, emptySet())
 
     val use24h: StateFlow<Boolean> = settingsRepo.use24h
-        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+        .stateIn(scope, SharingStarted.Eagerly, true)
 
     val themeKey: StateFlow<String> = settingsRepo.themeKey
-        .stateIn(viewModelScope, SharingStarted.Eagerly, DEFAULT_THEME_KEY)
+        .stateIn(scope, SharingStarted.Eagerly, DEFAULT_THEME_KEY)
 
     val favoriteSet: StateFlow<Set<String>> = favoritePkgs
         .map { it.toSet() }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+        .stateIn(scope, SharingStarted.Eagerly, emptySet())
 
     val hiddenSet: StateFlow<Set<String>> = hiddenPkgs
 
@@ -162,7 +183,7 @@ class LauncherViewModel(
         combine(allAppsFlow, favoritePkgs, hiddenPkgs) { apps, favs, hidden ->
             val byPkg = apps.associateBy { it.packageName }
             favs.mapNotNull { byPkg[it] }.filter { it.packageName !in hidden }
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     /** Apps shown in the drawer: not hidden, filtered by the (Greek-aware) query. */
     val drawerApps: StateFlow<List<AppInfo>> =
@@ -175,14 +196,14 @@ class LauncherViewModel(
         }
             // Filtering must not run on the frame-producing thread.
             .flowOn(computationDispatcher)
-            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+            .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     init {
         // Single load pipeline. `collectLatest` cancels the in-flight load when a
         // newer request arrives, which is what guarantees a slow earlier load can
         // never publish over a faster later one (the stale-list bug), and makes a
         // burst of package broadcasts collapse into one enumeration.
-        viewModelScope.launch {
+        scope.launch {
             reloadRequests.collectLatest { reason ->
                 // The first load must not wait; everything else is debounced so a
                 // Play Store "update all" does not trigger one query per event.
@@ -192,13 +213,13 @@ class LauncherViewModel(
         }
         reloadRequests.tryEmit(ReloadReason.Initial)
 
-        viewModelScope.launch {
+        scope.launch {
             appChangeSource.changes.collect { reloadRequests.tryEmit(ReloadReason.Change) }
         }
 
         // Surface a settings store that cannot be read, instead of presenting
         // defaults as if they were the user's configuration.
-        viewModelScope.launch {
+        scope.launch {
             settingsRepo.readError.collect { error ->
                 if (error != null) _settingsError.value = error
             }
@@ -207,7 +228,7 @@ class LauncherViewModel(
         // Auto-launch: when a search the user typed narrows to exactly one app,
         // open it — once. `combine` keeps the query and the matches consistent, and
         // the debounce keeps it from firing mid-word.
-        viewModelScope.launch {
+        scope.launch {
             combine(query, drawerApps) { q, matches -> q to matches }
                 .debounce(SEARCH_DEBOUNCE_MS)
                 .collect { (q, matches) -> considerAutoLaunch(q, matches) }
@@ -388,6 +409,11 @@ class LauncherViewModel(
         _goHome.tryEmit(Unit)
     }
 
+    override fun onCleared() {
+        scope.cancel()
+        super.onCleared()
+    }
+
     private fun persistQuery(value: String) {
         query.value = value
         savedState[KEY_QUERY] = value
@@ -406,7 +432,7 @@ class LauncherViewModel(
      * that was actually stored.
      */
     private fun settingsWrite(action: suspend () -> Unit) {
-        viewModelScope.launch {
+        scope.launch {
             try {
                 action()
             } catch (error: Exception) {
@@ -423,6 +449,7 @@ class LauncherViewModel(
         const val TAG_SETTINGS = "settings-write"
         const val TAG_GATEWAY = "launcher-gateway"
         const val TAG_UI = "ui"
+        const val TAG_UNCAUGHT = "uncaught"
 
         /** Collapses a burst of package-change broadcasts into one enumeration. */
         const val PACKAGE_EVENT_DEBOUNCE_MS = 250L

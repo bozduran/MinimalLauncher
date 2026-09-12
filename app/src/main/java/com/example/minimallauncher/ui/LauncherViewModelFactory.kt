@@ -8,6 +8,7 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.minimallauncher.data.AndroidLauncherGateway
 import com.example.minimallauncher.data.DataStoreSettingsRepository
+import com.example.minimallauncher.data.LogcatAppLogger
 import com.example.minimallauncher.data.PackageChangeSource
 import com.example.minimallauncher.data.PackageManagerAppRepository
 import com.example.minimallauncher.data.dataStore
@@ -41,12 +42,16 @@ class LauncherViewModelFactory(
         require(modelClass.isAssignableFrom(LauncherViewModel::class.java)) {
             "Unsupported ViewModel class: ${modelClass.name}"
         }
+        // One logger instance so app-enumeration skips and ViewModel failures share
+        // a tag prefix.
+        val logger = LogcatAppLogger()
         return LauncherViewModel(
-            appRepo = PackageManagerAppRepository(application),
+            appRepo = PackageManagerAppRepository(application, logger),
             settingsRepo = DataStoreSettingsRepository(application.dataStore),
             appChangeSource = PackageChangeSource(application),
             gateway = AndroidLauncherGateway(application),
             savedState = savedState,
+            logger = logger,
         ) as T
     }
 }

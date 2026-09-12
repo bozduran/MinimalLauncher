@@ -13,7 +13,10 @@ import java.util.Locale
  * The `<queries>` declaration in the manifest (MAIN/LAUNCHER) is what makes this
  * work under Android 11+ package-visibility rules.
  */
-class PackageManagerAppRepository(private val context: Context) : AppRepository {
+class PackageManagerAppRepository(
+    private val context: Context,
+    private val logger: AppLogger = NoOpAppLogger,
+) : AppRepository {
 
     /** All launchable apps (excluding this launcher), sorted by label using a locale collator. */
     override suspend fun loadApps(): List<AppInfo> {
@@ -27,8 +30,16 @@ class PackageManagerAppRepository(private val context: Context) : AppRepository 
         return pm.queryIntentActivities(intent, 0)
             // A single unreadable package (label lookup racing an uninstall, an OEM
             // PackageManager throwing where AOSP returns null) must not fail the
-            // whole enumeration and leave the launcher with no app list at all.
-            .mapNotNull { resolveInfo -> runCatching { toAppInfo(resolveInfo, pm, myPackage) }.getOrNull() }
+            // whole enumeration and leave the launcher with no app list at all —
+            // but the skip is recorded rather than silently discarded.
+            .mapNotNull { resolveInfo ->
+                try {
+                    toAppInfo(resolveInfo, pm, myPackage)
+                } catch (error: Exception) {
+                    logger.record(TAG, error, "skipping unreadable package during enumeration")
+                    null
+                }
+            }
             .let { AppListOrdering.collapseAndSort(it, collator) }
     }
 
@@ -40,5 +51,9 @@ class PackageManagerAppRepository(private val context: Context) : AppRepository 
             packageName = activity.packageName,
             activityName = activity.name,
         )
+    }
+
+    private companion object {
+        const val TAG = "app-enumeration"
     }
 }

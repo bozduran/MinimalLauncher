@@ -536,6 +536,49 @@ class LauncherViewModelTest {
             assertEquals(listOf("Chrome"), vm.allApps.value.map { it.label })
         }
 
+    // ── ARCH-6: no failure escapes unobserved ───────────────────────────────
+
+    @Test
+    fun `an Error escaping a settings write is caught by the scope handler`() =
+        runTest(dispatcher) {
+            // settingsWrite catches Exception, not Error. Without the
+            // CoroutineExceptionHandler the Error would reach the thread's uncaught
+            // handler and kill the process — which for a HOME app means no home screen.
+            val settings = FakeSettingsRepository().apply {
+                writeFailure = StackOverflowError("simulated")
+            }
+            val logger = RecordingAppLogger()
+            val vm = viewModel(settingsRepo = settings, logger = logger)
+            advanceUntilIdle()
+
+            vm.toggleFavorite("com.example.chrome")
+            advanceUntilIdle()
+
+            assertEquals(1, logger.recordsFor("uncaught").size)
+            assertTrue(
+                logger.recordsFor("uncaught").single().throwable is StackOverflowError,
+            )
+        }
+
+    @Test
+    fun `the launcher keeps working after an uncaught failure`() = runTest(dispatcher) {
+        val settings = FakeSettingsRepository().apply {
+            writeFailure = StackOverflowError("simulated")
+        }
+        val repo = FakeAppRepository(listOf(app("Chrome")))
+        val vm = viewModel(appRepo = repo, settingsRepo = settings)
+        advanceUntilIdle()
+
+        vm.toggleFavorite("com.example.chrome")
+        advanceUntilIdle()
+
+        // The scope is not cancelled by the handler, so state still updates.
+        repo.apps = listOf(app("Chrome"), app("Maps"))
+        vm.refresh()
+        advanceUntilIdle()
+        assertEquals(2, vm.allApps.value.size)
+    }
+
     // ── PLAT-3: survive process death ───────────────────────────────────────
 
     @Test
