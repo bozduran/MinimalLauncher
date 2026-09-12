@@ -24,7 +24,15 @@ object HomeFavoritesLayout {
     /** Clock + date + spacers + the "↑ apps" footer, measured from HomeScreen. */
     val FixedChromeHeight: Dp = 206.dp
 
-    /** One favorite row: 23sp text plus 11dp vertical padding either side. */
+    /**
+     * One favorite row: 23sp text plus 11dp vertical padding either side.
+     *
+     * A fixed assumption measured at the default font scale (A11Y-2). At very large
+     * system font scales the real row is taller, so the cap becomes conservative —
+     * it under-fills rather than clipping — which is the safe direction, but it means
+     * fewer rows are shown than strictly fit. Measuring the row at runtime would fix
+     * that and needs a device to verify.
+     */
     val FavoriteRowHeight: Dp = 50.dp
 
     /** How many rows fit in [availableHeight] above the fixed chrome. */

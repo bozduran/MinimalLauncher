@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -75,7 +76,9 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
                 text = stringResource(R.string.back_symbol),
                 style = AppTextStyles.BackSymbol,
                 color = TextPrimary,
-                modifier = Modifier.clickable { onBack() },
+                modifier = Modifier
+                    .sizeIn(minWidth = Dimens.MinTouchTarget, minHeight = Dimens.MinTouchTarget)
+                    .clickable { onBack() },
             )
             Spacer(Modifier.width(18.dp))
             Text(
@@ -126,7 +129,12 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
                             text = stringResource(R.string.settings_unhide),
                             style = AppTextStyles.SectionLabel,
                             color = TextSecondary,
-                            modifier = Modifier.clickable { vm.toggleHidden(app.packageName) },
+                            modifier = Modifier
+                                .sizeIn(
+                                    minWidth = Dimens.MinTouchTarget,
+                                    minHeight = Dimens.MinTouchTarget,
+                                )
+                                .clickable { vm.toggleHidden(app.packageName) },
                         )
                     }
                 }

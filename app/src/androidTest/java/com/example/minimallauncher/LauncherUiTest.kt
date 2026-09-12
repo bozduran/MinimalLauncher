@@ -1,6 +1,8 @@
 package com.example.minimallauncher
 
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithText
@@ -8,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.minimallauncher.ui.MainActivity
 import org.junit.Rule
@@ -77,5 +80,31 @@ class LauncherUiTest {
         rule.waitForIdle()
 
         rule.onNodeWithText(string(R.string.home_open_drawer)).assertIsDisplayed()
+    }
+}
+
+/**
+ * Accessibility assertions (USER_STORIES.md A11Y-2).
+ *
+ * Split into their own class so a failure here is not confused with a failure of the
+ * navigation flows above. Like the rest of this source set, **unrun** — see the note
+ * on [LauncherUiTest].
+ */
+@RunWith(AndroidJUnit4::class)
+class AccessibilityTest {
+
+    @get:Rule
+    val rule = createAndroidComposeRule<MainActivity>()
+
+    private fun string(id: Int): String = rule.activity.getString(id)
+
+    @Test
+    fun theSettingsBackControlMeetsTheMinimumTouchTarget() {
+        rule.onRoot().performTouchInput { longClick(center) }
+        rule.waitForIdle()
+
+        rule.onNodeWithText(string(R.string.back_symbol))
+            .assertHeightIsAtLeast(48.dp)
+            .assertWidthIsAtLeast(48.dp)
     }
 }

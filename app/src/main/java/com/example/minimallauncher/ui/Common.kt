@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -27,6 +28,7 @@ import androidx.compose.material3.Text
 import com.example.minimallauncher.R
 import com.example.minimallauncher.ui.theme.Accent
 import com.example.minimallauncher.ui.theme.AppTextStyles
+import com.example.minimallauncher.ui.theme.Dimens
 import com.example.minimallauncher.ui.theme.JetBrainsMono
 import com.example.minimallauncher.ui.theme.TextPrimary
 import com.example.minimallauncher.ui.theme.TextSecondary
@@ -76,8 +78,11 @@ fun SearchField(
                 style = AppTextStyles.SearchClear,
                 color = TextSecondary,
                 modifier = Modifier
+                    // The glyph stays small; the touch target must not. A bare text
+                    // node was roughly 26dp tall, well under the 48dp minimum.
+                    .sizeIn(minWidth = Dimens.MinTouchTarget, minHeight = Dimens.MinTouchTarget)
                     .clickable { onChange("") }
-                    .padding(start = 10.dp),
+                    .padding(start = Dimens.SpaceSm),
             )
         }
     }
