@@ -59,11 +59,23 @@
         </activity>
     </application>
 
-    <!-- Required on Android 11+ to see other installed apps via PackageManager -->
+    <!--
+      Required on Android 11+ to see other installed apps via PackageManager.
+
+      The MAIN/LAUNCHER entry is what lets the launcher enumerate apps at all. The
+      APP_CALENDAR entry is what lets it *resolve* a calendar by capability: without
+      it, queryIntentActivities/resolveActivity would not see a calendar app that
+      does not also match the launcher query, and the date tap would fail on devices
+      where the calendar is not a launcher app.
+    -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_CALENDAR" />
         </intent>
     </queries>
 

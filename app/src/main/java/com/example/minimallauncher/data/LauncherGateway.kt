@@ -1,9 +1,9 @@
 package com.example.minimallauncher.data
 
 import android.content.Context
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
-import android.provider.AlarmClock
 import android.provider.Settings
 
 /**
@@ -77,26 +77,36 @@ class AndroidLauncherGateway(private val context: Context) : LauncherGateway {
         return start(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
-    override fun openClock(): Result<Unit> = start(
-        Intent(AlarmClock.ACTION_SHOW_ALARMS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-    )
+    override fun openClock(): Result<Unit> = openFirstResolvable(SystemScreenTargets.CLOCK, "clock")
 
-    override fun openCalendar(): Result<Unit> {
-        val launch = context.packageManager.getLaunchIntentForPackage(CALENDAR_PACKAGE)
-        val intent = if (launch != null) {
-            Intent(launch).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        } else {
-            Intent(Intent.ACTION_VIEW, Uri.parse(CALENDAR_CONTENT_URI))
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        return start(intent)
+    override fun openCalendar(): Result<Unit> =
+        openFirstResolvable(SystemScreenTargets.CALENDAR, "calendar")
+
+    /**
+     * Opens the first strategy the platform can actually handle.
+     *
+     * Resolving by capability rather than package name is what makes this work on a
+     * device with a non-Google calendar; when nothing can handle any strategy the
+     * caller gets a failure to report (STAB-5) instead of a tap that does nothing.
+     */
+    private fun openFirstResolvable(candidates: List<ScreenTarget>, what: String): Result<Unit> {
+        val target = ScreenTargetResolver.firstResolvable(candidates, ::canResolve)
+            ?: return Result.failure(
+                ActivityNotFoundException("no activity available to open the $what"),
+            )
+        return start(intentFor(target))
     }
+
+    private fun canResolve(target: ScreenTarget): Boolean =
+        context.packageManager.resolveActivity(intentFor(target), 0) != null
+
+    private fun intentFor(target: ScreenTarget): Intent = when (target) {
+        is ScreenTarget.Category -> Intent(target.action).apply {
+            addCategory(target.category)
+        }
+        is ScreenTarget.View -> Intent(target.action, Uri.parse(target.uri))
+        is ScreenTarget.Action -> Intent(target.action)
+    }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
     private fun start(intent: Intent): Result<Unit> = runCatching { context.startActivity(intent) }
-
-    private companion object {
-        // TODO(I18N-3): resolve the calendar by capability instead of package name.
-        const val CALENDAR_PACKAGE = "com.google.android.calendar"
-        const val CALENDAR_CONTENT_URI = "content://com.android.calendar/time"
-    }
 }
