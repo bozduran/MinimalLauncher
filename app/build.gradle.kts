@@ -63,6 +63,21 @@ android {
     buildFeatures {
         compose = true
     }
+    lint {
+        // Fail on errors, and promote the checks this backlog is actively fixing so
+        // they cannot regress. Dependency-version notices stay advisory: upgrading
+        // AGP/Compose is a separate, deliberate change (PERF-6 and friends).
+        abortOnError = true
+        warningsAsErrors = false
+        checkDependencies = false
+        error += setOf(
+            "HardcodedText",
+            "UnusedResources",
+            "ObsoleteSdkInt",
+            "MissingTranslation",
+            "MonochromeLauncherIcon",
+        )
+    }
 }
 
 dependencies {

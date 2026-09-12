@@ -28,10 +28,18 @@
     <string name="settings_unhide">unhide</string>
 
     <!--
+      Symbols, not language: extracted so HardcodedText can be a blocking lint
+      check, and marked translatable="false" so no locale can alter them.
+    -->
+    <string name="search_clear_symbol" translatable="false">×</string>
+    <string name="favorite_on_symbol" translatable="false">★</string>
+    <string name="favorite_off_symbol" translatable="false">☆</string>
+    <string name="back_symbol" translatable="false">‹</string>
+
+    <!--
       Failure messages for outgoing actions (STAB-5).
-      NOTE: glyph-only strings ("×", "‹", "★", "☆") stay as literals in code: they
-      are symbols, not language, so they must not be translated. Theme names in
-      ui/theme/Color.kt are likewise deliberately untranslated product names.
+      NOTE: theme names in ui/theme/Color.kt are deliberately untranslated product
+      names, and the glyph symbols above are marked translatable="false".
     -->
     <string name="error_open_app">Can\'t open %1$s</string>
     <string name="error_app_info">No app details screen available</string>

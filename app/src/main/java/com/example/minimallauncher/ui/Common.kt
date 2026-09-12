@@ -76,7 +76,7 @@ fun SearchField(
         }
         if (query.isNotEmpty()) {
             Text(
-                text = "×",
+                text = stringResource(R.string.search_clear_symbol),
                 fontFamily = JetBrainsMono,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Light,

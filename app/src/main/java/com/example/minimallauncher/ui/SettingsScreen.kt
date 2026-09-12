@@ -69,7 +69,7 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "‹",
+                text = stringResource(R.string.back_symbol),
                 fontFamily = JetBrainsMono,
                 fontSize = 30.sp,
                 color = TextPrimary,
@@ -109,7 +109,8 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = if (isFav) "★" else "☆",
+                        text = if (isFav) stringResource(R.string.favorite_on_symbol)
+                        else stringResource(R.string.favorite_off_symbol),
                         fontFamily = JetBrainsMono,
                         fontSize = 18.sp,
                         color = if (isFav) Accent else TextTertiary,

@@ -95,8 +95,17 @@ class TranslationParityTest {
     @Test
     fun `untranslatable defaults are the only ones allowed to be absent`() {
         // Guards against someone "fixing" a parity failure by marking a real string
-        // translatable="false": the brand name is the only legitimate case here.
-        assertEquals(setOf("app_name"), default.untranslatable)
+        // translatable="false": only the brand name and pure glyphs are legitimate.
+        assertEquals(
+            setOf(
+                "app_name",
+                "search_clear_symbol",
+                "favorite_on_symbol",
+                "favorite_off_symbol",
+                "back_symbol",
+            ),
+            default.untranslatable,
+        )
     }
 
     @Test

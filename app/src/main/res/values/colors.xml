@@ -1,4 +1,4 @@
 <resources>
+    <!-- Launch-window background; kept in sync with the warm-dark palette. -->
     <color name="bg">#1C1A17</color>
-    <color name="ic_launcher_background">#232019</color>
 </resources>
