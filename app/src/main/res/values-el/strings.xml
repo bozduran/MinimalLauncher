@@ -24,6 +24,8 @@
     <string name="menu_app_info">πληροφορίες εφαρμογής</string>
     <string name="menu_uninstall">απεγκατάσταση</string>
 
+    <string name="profile_other">άλλο προφίλ</string>
+
     <!-- Settings -->
     <string name="settings_title">ρυθμίσεις</string>
     <string name="settings_24h">ρολόι 24 ώρων</string>

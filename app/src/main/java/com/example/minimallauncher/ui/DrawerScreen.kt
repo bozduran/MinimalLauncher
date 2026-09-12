@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.minimallauncher.R
 import com.example.minimallauncher.data.AppInfo
+import com.example.minimallauncher.data.ProfileKind
 import com.example.minimallauncher.ui.theme.Accent
 import com.example.minimallauncher.ui.theme.AppTextStyles
 import com.example.minimallauncher.ui.theme.Bg
@@ -45,6 +46,7 @@ import com.example.minimallauncher.ui.theme.JetBrainsMono
 import com.example.minimallauncher.ui.theme.SurfaceCol
 import com.example.minimallauncher.ui.theme.TextPrimary
 import com.example.minimallauncher.ui.theme.TextSecondary
+import com.example.minimallauncher.ui.theme.TextTertiary
 
 private const val FOCUS_ATTEMPTS = 2
 
@@ -111,18 +113,36 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
             contentPadding = PaddingValues(vertical = 6.dp),
         ) {
             items(apps, key = { it.packageName }) { app ->
-                Text(
-                    text = app.label,
-                    style = AppTextStyles.DrawerItem,
-                    color = TextPrimary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .combinedClickable(
-                            onClick = { vm.launchApp(app) },
-                            onLongClick = { menuApp = app },
+                Column {
+                    Text(
+                        text = app.label,
+                        style = AppTextStyles.DrawerItem,
+                        color = TextPrimary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .combinedClickable(
+                                onClick = { vm.launchApp(app) },
+                                onLongClick = { menuApp = app },
+                            )
+                            .padding(
+                                horizontal = Dimens.ScreenPadding,
+                                vertical = Dimens.DrawerRowVertical,
+                            ),
+                    )
+                    // Apps from another profile (work, secondary user) are marked so
+                    // two entries with the same name stay distinguishable.
+                    if (app.profileKind != ProfileKind.Current) {
+                        Text(
+                            text = stringResource(R.string.profile_other),
+                            style = AppTextStyles.ThemeLabel,
+                            color = TextTertiary,
+                            modifier = Modifier.padding(
+                                start = Dimens.ScreenPadding,
+                                bottom = Dimens.SpaceSm,
+                            ),
                         )
-                        .padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.DrawerRowVertical),
-                )
+                    }
+                }
             }
         }
     }

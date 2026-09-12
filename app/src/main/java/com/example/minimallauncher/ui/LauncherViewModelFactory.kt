@@ -10,7 +10,10 @@ import com.example.minimallauncher.data.AndroidLauncherGateway
 import com.example.minimallauncher.data.DataStoreSettingsRepository
 import com.example.minimallauncher.data.LogcatAppLogger
 import com.example.minimallauncher.data.PackageChangeSource
-import com.example.minimallauncher.data.PackageManagerAppRepository
+import com.example.minimallauncher.data.FallbackLaunchableSource
+import com.example.minimallauncher.data.LauncherAppsLaunchableSource
+import com.example.minimallauncher.data.PackageManagerLaunchableSource
+import com.example.minimallauncher.data.SourceBackedAppRepository
 import com.example.minimallauncher.data.dataStore
 import com.example.minimallauncher.ui.theme.LaunchThemeStore
 
@@ -48,7 +51,17 @@ class LauncherViewModelFactory(
         val logger = LogcatAppLogger()
         val launchThemeStore = LaunchThemeStore(application)
         return LauncherViewModel(
-            appRepo = PackageManagerAppRepository(application, logger),
+            appRepo = SourceBackedAppRepository(
+                // LauncherApps sees every profile; PackageManager is the fallback when
+                // it is unavailable or reports nothing.
+                source = FallbackLaunchableSource(
+                    primary = LauncherAppsLaunchableSource(application),
+                    secondary = PackageManagerLaunchableSource(application),
+                    logger = logger,
+                ),
+                selfPackage = application.packageName,
+                logger = logger,
+            ),
             settingsRepo = DataStoreSettingsRepository(
                 dataStore = application.dataStore,
                 launchThemeMirror = launchThemeStore::saveThemeKey,

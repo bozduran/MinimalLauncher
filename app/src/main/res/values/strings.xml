@@ -19,6 +19,8 @@
     <string name="menu_app_info">app info</string>
     <string name="menu_uninstall">uninstall</string>
 
+    <string name="profile_other">other profile</string>
+
     <!-- Settings -->
     <string name="settings_title">settings</string>
     <string name="settings_24h">24-hour clock</string>
