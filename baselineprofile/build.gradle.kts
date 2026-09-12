@@ -15,6 +15,13 @@ plugins {
  * running:
  *     ./gradlew :app:generateBaselineProfile
  * which CI's emulator job does. See .github/workflows/ci.yml.
+ *
+ * WARNING: this module's build chain includes an APK installer plugin, so building it
+ * (`:baselineprofile:assemble`) connects to whatever device `adb` can see and tries to
+ * install its test APK there. On a phone that is not meant to receive builds this
+ * fails with INSTALL_FAILED_USER_RESTRICTED — but it should not be attempted against
+ * someone else's device in the first place. `:app:assembleDebug` and the test tasks
+ * do not touch this module.
  */
 android {
     namespace = "com.example.minimallauncher.baselineprofile"
