@@ -54,7 +54,7 @@ plus a green test run before committing. **236 unit tests, 0 failures**, lint cl
 | QA-3 instrumented UI suite | ⚠️ partial — written and compiles, never executed | `3229699` |
 | A11Y-2 touch targets | ⚠️ partial — tap targets fixed, font-scale rendering unverified | `31614ba` |
 | PERF-5 lifecycle-aware UI work | ⚠️ partial — changes in place; recomposition counts unmeasured | `9238155` |
-| A11Y-1 screen-reader routes | ⚠️ partial — semantics added; TalkBack behaviour unverified | `$(git log --oneline -1 | cut -d' ' -f1)`
+| A11Y-1 screen-reader routes | ⚠️ partial — semantics added; TalkBack behaviour unverified | `085ff1a`
 
 **Still open (1 story):** PERF-3 (baseline profiles) — must be generated from a
 measured device run; writing one by hand would be fabrication.
