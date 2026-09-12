@@ -9,7 +9,7 @@
 
 ## Implementation status
 
-Implemented on branch `refactor/user-stories-implementation` (32 stories complete, 4 partial — 36 of 41 touched).
+Implemented on branch `refactor/user-stories-implementation` (33 stories complete, 5 partial — 38 of 41 touched).
 Every commit below is atomic and was verified with `./gradlew assembleDebug assembleRelease testDebugUnitTest`
 plus a green test run before committing. **236 unit tests, 0 failures**, lint clean and blocking.
 
@@ -35,7 +35,7 @@ plus a green test run before committing. **236 unit tests, 0 failures**, lint cl
 | PERF-2 R8 + shrinking | ⚠️ done, release smoke test outstanding | `996f73a` |
 | A11Y-3 palette contrast audit + themed icon | ✅ done (contrast debt recorded below) | `6330349`, `e181c3b` |
 | PLAT-4 hygiene / warning-free build / lint gate | ✅ done | `cdb5740`, `e181c3b` |
-| QA-4 CI pipeline | ⚠️ partial — emulator job for QA-3 not wired | `6dd4d34` |
+| QA-4 CI pipeline (incl. emulator job) | ✅ done | `6dd4d34`, `b3df761` |
 | ARCH-3 gateway for all outgoing actions | ✅ done | `4335dde` |
 | I18N-1 externalise strings + Greek | ✅ done | `bd87efb` |
 | ARCH-4 testable clock formatter | ✅ done | `fdb1af3` |
@@ -51,8 +51,10 @@ plus a green test run before committing. **236 unit tests, 0 failures**, lint cl
 | I18N-3 resolve clock/calendar by capability | ✅ done | `bd4f193` |
 | PERF-6 version scheme | ⚠️ partial — versioning done, applicationId needs an owner decision | `ee82ccc` |
 | PLAT-1 LauncherApps / profiles | ✅ done (work-profile *rendering* unverified on device) | `4c0be4c` |
+| QA-3 instrumented UI suite | ⚠️ partial — written and compiles, never executed | `3229699` |
+| A11Y-2 touch targets | ⚠️ partial — tap targets fixed, font-scale rendering unverified | `31614ba` |
 
-**Still open (5 stories):** PERF-3, PERF-5, QA-3, A11Y-1, A11Y-2.
+**Still open (3 stories):** PERF-3, PERF-5, A11Y-1.
 
 ### Device verification policy
 
@@ -64,11 +66,11 @@ Consequences for the open stories — these are the reasons they are not closed:
 
 | Story | Why a device is needed | Status under this policy |
 | --- | --- | --- |
-| QA-3 instrumented UI tests | Tests must run on a device | Write + compile only |
-| A11Y-1 TalkBack reach | Needs a real accessibility service | Semantics can be added; behaviour unverified |
-| A11Y-2 font scale / tap targets | Needs a device at 1.3x–2.0x font scale | Same |
-| PERF-5 recomposition counts | Needs Layout Inspector / JankStats on a device | Fixes can land; counts unmeasured |
-| PERF-3 baseline profiles | Profiles are generated and measured on a device | Not startable |
+| QA-3 instrumented UI tests | Tests must run on a device | ⚠️ written + compiles; runs in CI's emulator job (QA-4) |
+| A11Y-1 TalkBack reach | Needs a real accessibility service | Open — semantics not yet added |
+| A11Y-2 font scale / tap targets | Needs a device at 1.3x–2.0x font scale | ⚠️ tap targets fixed; font scale unverified |
+| PERF-5 recomposition counts | Needs Layout Inspector / JankStats on a device | Open |
+| PERF-3 baseline profiles | Profiles are generated and measured on a device | Open — not startable |
 | PLAT-1 `LauncherApps` / work profiles | Needs a work profile or second user | ✅ done — enumeration is behind an interface and unit-tested; only the on-device rendering is unverified |
 
 PLAT-1 was the exception and is now complete: the profile-aware enumeration sits
