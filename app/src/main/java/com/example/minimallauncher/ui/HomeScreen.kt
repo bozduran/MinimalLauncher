@@ -1,7 +1,9 @@
 package com.example.minimallauncher.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -26,6 +28,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
@@ -65,6 +70,7 @@ private fun rememberCurrentTime(): State<LocalDateTime> {
     return time
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     vm: LauncherViewModel,
@@ -79,6 +85,10 @@ fun HomeScreen(
     val isLoadingApps = state.isLoadingApps
     val appListError = state.appListError
     val now by rememberCurrentTime()
+
+    // Long-press is the only way to Settings, which is undiscoverable for a screen
+    // reader. A custom accessibility action gives TalkBack a real entry point.
+    val openSettingsLabel = stringResource(R.string.cd_open_settings)
 
     // Compiled once per locale rather than reallocated on each (per-minute) recomposition.
     val locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
@@ -103,6 +113,14 @@ fun HomeScreen(
                 .systemBarsPadding()
                 .pointerInput(Unit) {
                     detectTapGestures(onLongPress = { onOpenSettings() })
+                }
+                .semantics {
+                    customActions = listOf(
+                        CustomAccessibilityAction(openSettingsLabel) {
+                            onOpenSettings()
+                            true
+                        },
+                    )
                 }
                 .padding(horizontal = Dimens.ScreenPadding),
             verticalArrangement = Arrangement.Center,
@@ -140,7 +158,14 @@ fun HomeScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(Dimens.RowCorner))
-                            .clickable { vm.launchApp(app) }
+                            // combinedClickable, not clickable: a long press on a row
+                            // is now deterministically "open settings" instead of
+                            // racing the parent's gesture detector, which could
+                            // deliver both outcomes.
+                            .combinedClickable(
+                                onClick = { vm.launchApp(app) },
+                                onLongClick = { onOpenSettings() },
+                            )
                             .padding(vertical = Dimens.RowVertical),
                     )
                 }

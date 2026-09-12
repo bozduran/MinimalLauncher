@@ -26,6 +26,17 @@
 
     <string name="profile_other">άλλο προφίλ</string>
 
+
+    <!-- Accessibility labels (A11Y-1). -->
+    <string name="cd_open_settings">άνοιγμα ρυθμίσεων</string>
+    <string name="cd_clear_search">καθαρισμός αναζήτησης</string>
+    <string name="cd_app_options">επιλογές εφαρμογής</string>
+    <string name="cd_unhide_app">εμφάνιση εφαρμογής</string>
+    <string name="state_favorited">αγαπημένο</string>
+    <string name="state_not_favorited">δεν είναι αγαπημένο</string>
+    <string name="state_theme_selected">επιλεγμένο</string>
+    <string name="state_theme_not_selected">μη επιλεγμένο</string>
+
     <!-- Settings -->
     <string name="settings_title">ρυθμίσεις</string>
     <string name="settings_24h">ρολόι 24 ώρων</string>

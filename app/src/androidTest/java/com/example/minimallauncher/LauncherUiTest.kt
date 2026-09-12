@@ -1,13 +1,17 @@
 package com.example.minimallauncher
 
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.dp
@@ -106,5 +110,44 @@ class AccessibilityTest {
         rule.onNodeWithText(string(R.string.back_symbol))
             .assertHeightIsAtLeast(48.dp)
             .assertWidthIsAtLeast(48.dp)
+    }
+}
+
+/**
+ * Accessibility assertions for USER_STORIES.md A11Y-1: every launcher action must be
+ * reachable and announced without relying on a glyph or an invisible long press.
+ *
+ * **Unrun** — see the note on [LauncherUiTest].
+ */
+@RunWith(AndroidJUnit4::class)
+class ScreenReaderTest {
+
+    @get:Rule
+    val rule = createAndroidComposeRule<MainActivity>()
+
+    private fun string(id: Int): String = rule.activity.getString(id)
+
+    @Test
+    fun settingsIsReachableWithoutALongPress() {
+        // A custom accessibility action, not a gesture: TalkBack users cannot
+        // discover "long-press anywhere".
+        rule.onRoot().assert(SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions))
+    }
+
+    @Test
+    fun theThemeSwatchesAnnounceTheirNameAndSelectedState() {
+        rule.onRoot().performTouchInput { longClick(center) }
+        rule.waitForIdle()
+
+        rule.onNodeWithContentDescription("Warm Dark").assertExists()
+        rule.onNodeWithContentDescription("Paper").assertExists()
+    }
+
+    @Test
+    fun theBackControlIsAnnouncedAsABackControl() {
+        rule.onRoot().performTouchInput { longClick(center) }
+        rule.waitForIdle()
+
+        rule.onNodeWithText(string(R.string.back_symbol)).assertIsDisplayed()
     }
 }

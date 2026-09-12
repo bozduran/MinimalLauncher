@@ -33,6 +33,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -54,6 +59,9 @@ import com.example.minimallauncher.ui.theme.TextTertiary
 @Composable
 fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
     val state by vm.uiState.collectAsStateCompat()
+    val favoritedLabel = stringResource(R.string.state_favorited)
+    val notFavoritedLabel = stringResource(R.string.state_not_favorited)
+    val unhideLabel = stringResource(R.string.cd_unhide_app)
     val apps = state.apps
     val favorites = state.favoritePackages
     val hidden = state.hiddenPackages
@@ -108,7 +116,11 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { vm.toggleFavorite(app.packageName) }
-                        .padding(horizontal = Dimens.RowPadding, vertical = Dimens.DrawerRowVertical),
+                        .padding(horizontal = Dimens.RowPadding, vertical = Dimens.DrawerRowVertical)
+                        // The star is a glyph, so the state must be announced.
+                        .semantics {
+                            stateDescription = if (isFav) favoritedLabel else notFavoritedLabel
+                        },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -134,7 +146,11 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
                                     minWidth = Dimens.MinTouchTarget,
                                     minHeight = Dimens.MinTouchTarget,
                                 )
-                                .clickable { vm.toggleHidden(app.packageName) },
+                                .clickable { vm.toggleHidden(app.packageName) }
+                                .semantics {
+                                    contentDescription = unhideLabel
+                                    role = Role.Button
+                                },
                         )
                     }
                 }
@@ -145,6 +161,8 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
 
 @Composable
 private fun ThemePicker(current: String, onSelect: (String) -> Unit) {
+    val selectedLabel = stringResource(R.string.state_theme_selected)
+    val notSelectedLabel = stringResource(R.string.state_theme_not_selected)
     LazyRow(
         modifier = Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = Dimens.RowPadding, vertical = 4.dp),
@@ -155,7 +173,11 @@ private fun ThemePicker(current: String, onSelect: (String) -> Unit) {
             Column(
                 modifier = Modifier
                     .width(98.dp)
-                    .clickable { onSelect(opt.key) },
+                    .clickable { onSelect(opt.key) }
+                    .semantics {
+                        contentDescription = opt.label
+                        stateDescription = if (selected) selectedLabel else notSelectedLabel
+                    },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Box(

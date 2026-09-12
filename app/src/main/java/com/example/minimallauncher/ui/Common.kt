@@ -19,6 +19,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
@@ -53,6 +57,8 @@ fun SearchField(
     focusRequester: FocusRequester? = null,
     onSearch: () -> Unit = {},
 ) {
+    val clearLabel = stringResource(R.string.cd_clear_search)
+
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -88,7 +94,13 @@ fun SearchField(
                     // node was roughly 26dp tall, well under the 48dp minimum.
                     .sizeIn(minWidth = Dimens.MinTouchTarget, minHeight = Dimens.MinTouchTarget)
                     .clickable { onChange("") }
-                    .padding(start = Dimens.SpaceSm),
+                    .padding(start = Dimens.SpaceSm)
+                    // "x" is not a word: without this TalkBack announces the letter
+                    // rather than what the control does.
+                    .semantics {
+                        contentDescription = clearLabel
+                        role = Role.Button
+                    },
             )
         }
     }

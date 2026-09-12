@@ -30,6 +30,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,6 +62,10 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
     val query = state.query
     val favorites = state.favoritePackages
     var menuApp by remember { mutableStateOf<AppInfo?>(null) }
+
+    val appOptionsLabel = stringResource(R.string.cd_app_options)
+    val favoritedLabel = stringResource(R.string.state_favorited)
+    val notFavoritedLabel = stringResource(R.string.state_not_favorited)
 
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -127,7 +135,23 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
                             .padding(
                                 horizontal = Dimens.ScreenPadding,
                                 vertical = Dimens.DrawerRowVertical,
-                            ),
+                            )
+                            // The app menu is long-press only; a custom action gives
+                            // TalkBack a way in, and the state is announced because
+                            // the favourite flag is otherwise invisible.
+                            .semantics {
+                                stateDescription = if (app.packageName in favorites) {
+                                    favoritedLabel
+                                } else {
+                                    notFavoritedLabel
+                                }
+                                customActions = listOf(
+                                    CustomAccessibilityAction(appOptionsLabel) {
+                                        menuApp = app
+                                        true
+                                    },
+                                )
+                            },
                     )
                     // Apps from another profile (work, secondary user) are marked so
                     // two entries with the same name stay distinguishable.

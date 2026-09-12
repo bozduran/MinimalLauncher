@@ -21,6 +21,17 @@
 
     <string name="profile_other">other profile</string>
 
+
+    <!-- Accessibility labels (A11Y-1). -->
+    <string name="cd_open_settings">open settings</string>
+    <string name="cd_clear_search">clear search</string>
+    <string name="cd_app_options">app options</string>
+    <string name="cd_unhide_app">unhide app</string>
+    <string name="state_favorited">favorite</string>
+    <string name="state_not_favorited">not a favorite</string>
+    <string name="state_theme_selected">selected</string>
+    <string name="state_theme_not_selected">not selected</string>
+
     <!-- Settings -->
     <string name="settings_title">settings</string>
     <string name="settings_24h">24-hour clock</string>
