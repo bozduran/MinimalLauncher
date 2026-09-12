@@ -53,6 +53,27 @@ plus a green test run before committing. **218 unit tests, 0 failures**, lint cl
 
 **Still open (6 stories):** PERF-3, PERF-5, PLAT-1, QA-3, A11Y-1, A11Y-2.
 
+### Device verification policy
+
+An Android 15 (API 35) device is reachable over `adb` from this environment, but the
+project owner has explicitly scoped its use to **read-only / non-invasive**: no APK
+install, no instrumented test execution, no launcher or backup changes.
+
+Consequences for the open stories — these are the reasons they are not closed:
+
+| Story | Why a device is needed | Status under this policy |
+| --- | --- | --- |
+| QA-3 instrumented UI tests | Tests must run on a device | Write + compile only |
+| A11Y-1 TalkBack reach | Needs a real accessibility service | Semantics can be added; behaviour unverified |
+| A11Y-2 font scale / tap targets | Needs a device at 1.3x–2.0x font scale | Same |
+| PERF-5 recomposition counts | Needs Layout Inspector / JankStats on a device | Fixes can land; counts unmeasured |
+| PERF-3 baseline profiles | Profiles are generated and measured on a device | Not startable |
+| PLAT-1 `LauncherApps` / work profiles | Needs a work profile or second user | **Testable without one**, via an interface + fakes |
+
+PLAT-1 is the exception: the profile-aware enumeration can be put behind an
+interface and unit-tested with fakes, so it is the last story that can be completed
+to the same standard as the rest.
+
 **Partial (4):** DATA-4 and PERF-2 are implemented but need on-device verification
 (`bmgr backupnow/restore`; an R8 release smoke test). QA-4's CI pipeline is live but
 its instrumented emulator job is not wired up until QA-3 exists. PERF-6 has the
