@@ -55,6 +55,12 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
 
+    // Returning to the home screen must not leave the app menu (a separate Dialog
+    // window) on screen over it.
+    LaunchedEffect(active) {
+        if (!active) menuApp = null
+    }
+
     // Auto-focus the search box + show keyboard when the drawer is the active page.
     LaunchedEffect(active) {
         if (active) {

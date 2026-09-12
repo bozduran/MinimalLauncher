@@ -534,6 +534,57 @@ class LauncherViewModelTest {
             assertEquals(listOf("Chrome"), vm.allApps.value.map { it.label })
         }
 
+    // ── DRAW-3: consistent return-to-home ───────────────────────────────────
+
+    @Test
+    fun `returning to home restores the full drawer after a search`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps"), app("Photos")))
+        val vm = viewModel(appRepo = repo)
+        advanceUntilIdle()
+        vm.setQuery("chr")
+        advanceUntilIdle()
+        assertEquals(1, vm.drawerApps.value.size)
+
+        vm.onReturnToHome()
+        advanceUntilIdle()
+
+        assertEquals("", vm.query.value)
+        assertEquals(3, vm.drawerApps.value.size)
+    }
+
+    @Test
+    fun `returning to home is safe to call repeatedly`() = runTest(dispatcher) {
+        // onResume and onNewIntent can both fire for a single Home press.
+        val repo = FakeAppRepository(listOf(app("Chrome")))
+        val vm = viewModel(appRepo = repo)
+        advanceUntilIdle()
+        vm.setQuery("chr")
+        advanceUntilIdle()
+
+        vm.onReturnToHome()
+        vm.onReturnToHome()
+        advanceUntilIdle()
+
+        assertEquals("", vm.query.value)
+        assertEquals(listOf("Chrome"), vm.drawerApps.value.map { it.label })
+    }
+
+    @Test
+    fun `returning to home clears the search without disturbing favourites`() =
+        runTest(dispatcher) {
+            val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+            val settings = FakeSettingsRepository().apply { setFavorites("maps") }
+            val vm = viewModel(appRepo = repo, settingsRepo = settings)
+            advanceUntilIdle()
+            vm.setQuery("chr")
+            advanceUntilIdle()
+
+            vm.onReturnToHome()
+            advanceUntilIdle()
+
+            assertEquals(listOf("Maps"), vm.favorites.value.map { it.label })
+        }
+
     // ── DRAW-1: auto-launch only on deliberate input, exactly once ──────────
 
     /** Records launches through a fake gateway, so tests assert the real action. */
@@ -633,7 +684,7 @@ class LauncherViewModelTest {
         advanceUntilIdle()
 
         typeAndWait(vm, "chr")
-        vm.onHomePressed()
+        vm.onReturnToHome()
         advanceUntilIdle()
         typeAndWait(vm, "chr")
 
@@ -1121,7 +1172,7 @@ class LauncherViewModelTest {
     }
 
     @Test
-    fun `onHomePressed clears the query`() = runTest(dispatcher) {
+    fun `onReturnToHome clears the query`() = runTest(dispatcher) {
         val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
         val vm = viewModel(appRepo = repo)
         advanceUntilIdle()
@@ -1129,7 +1180,7 @@ class LauncherViewModelTest {
         advanceUntilIdle()
         assertEquals(1, vm.drawerApps.value.size)
 
-        vm.onHomePressed()
+        vm.onReturnToHome()
         advanceUntilIdle()
 
         assertEquals("", vm.query.value)
@@ -1137,13 +1188,13 @@ class LauncherViewModelTest {
     }
 
     @Test
-    fun `onHomePressed emits a single home signal`() = runTest(dispatcher) {
+    fun `onReturnToHome emits a single home signal`() = runTest(dispatcher) {
         val vm = viewModel()
         val received = mutableListOf<Unit>()
         val job = launch { vm.goHome.collect { received += it } }
         advanceUntilIdle()
 
-        vm.onHomePressed()
+        vm.onReturnToHome()
         advanceUntilIdle()
 
         assertEquals(1, received.size)

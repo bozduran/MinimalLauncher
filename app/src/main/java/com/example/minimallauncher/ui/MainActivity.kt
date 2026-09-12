@@ -63,12 +63,17 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         // Catch installs/uninstalls that happened while we were away.
         vm.refresh()
+        // Coming back via Back or Recents must land on the home screen exactly like
+        // pressing Home does; only onNewIntent was handled before, so a Back return
+        // resumed on the drawer with a stale query.
+        vm.onReturnToHome()
     }
 
     // Pressing Home while the launcher is foreground re-delivers the intent here.
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        vm.onHomePressed()
+        setIntent(intent)
+        vm.onReturnToHome()
     }
 }
 

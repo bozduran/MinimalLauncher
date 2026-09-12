@@ -345,7 +345,16 @@ class LauncherViewModel(
         }
     }
 
-    fun onHomePressed() {
+    /**
+     * Returns the launcher to a predictable state: page 0, no search, no pending
+     * auto-launch.
+     *
+     * Wired to every way the user can arrive back at the launcher — the Home
+     * button, Back from a launched app, or the system recreating the activity —
+     * because the previous implementation only reset on `onNewIntent` (i.e. the
+     * Home button). Returning via Back left the drawer open on a stale query.
+     */
+    fun onReturnToHome() {
         query.value = ""
         lastAutoLaunchedPackage = null
         _goHome.tryEmit(Unit)
