@@ -9,9 +9,9 @@
 
 ## Implementation status
 
-Implemented on branch `refactor/user-stories-implementation` (17 stories complete, 5 partial — 22 of 41 touched).
+Implemented on branch `refactor/user-stories-implementation` (22 stories complete, 3 partial — 25 of 41 touched).
 Every commit below is atomic and was verified with `./gradlew assembleDebug assembleRelease testDebugUnitTest`
-plus a green test run before committing. **146 unit tests, 0 failures.**
+plus a green test run before committing. **172 unit tests, 0 failures**, lint clean and blocking.
 
 | Story | Status | Commit |
 | --- | --- | --- |
@@ -33,14 +33,20 @@ plus a green test run before committing. **146 unit tests, 0 failures.**
 | DRAW-1 auto-launch exactly once | ✅ done | `dbbd39d` |
 | DRAW-4 precomputed search / off-main filter | ✅ done | `2793102` |
 | PERF-2 R8 + shrinking | ⚠️ done, release smoke test outstanding | `996f73a` |
-| A11Y-3 palette contrast audit | ⚠️ partial — audit done, themed icon open | `6330349` |
-| PLAT-4 hygiene / warning-free build | ⚠️ partial — lint baseline, theme base, deprecated APIs open | `cdb5740` |
+| A11Y-3 palette contrast audit + themed icon | ✅ done (contrast debt recorded below) | `6330349`, `e181c3b` |
+| PLAT-4 hygiene / warning-free build / lint gate | ✅ done | `cdb5740`, `e181c3b` |
 | QA-4 CI pipeline | ⚠️ partial — emulator job for QA-3 not wired | `6dd4d34` |
 | ARCH-3 gateway for all outgoing actions | ✅ done | `4335dde` |
+| I18N-1 externalise strings + Greek | ✅ done | `bd87efb` |
+| ARCH-4 testable clock formatter | ✅ done | `fdb1af3` |
+| DRAW-3 consistent return-to-home | ✅ done | `59fbff7` |
 
-**Still open (19 stories):** DRAW-2, DRAW-3, ARCH-2, ARCH-4, ARCH-5, ARCH-6,
-I18N-1, I18N-2, I18N-3, PERF-3, PERF-4, PERF-5, PERF-6, PLAT-1, PLAT-2, PLAT-3,
-QA-3, A11Y-1, A11Y-2.
+**Still open (16 stories):** ARCH-2, ARCH-5, ARCH-6, DRAW-2, I18N-2, I18N-3,
+PERF-3, PERF-4, PERF-5, PERF-6, PLAT-1, PLAT-2, PLAT-3, QA-3, A11Y-1, A11Y-2.
+
+**Partial (3):** DATA-4 and PERF-2 are implemented but need on-device verification
+(`bmgr backupnow/restore`; an R8 release smoke test). QA-4's CI pipeline is live but
+its instrumented emulator job is not wired up until QA-3 exists.
 
 **A11Y-3 debt (measured, not yet fixed):** secondary text fails WCAG AA on 25 of 38
 palettes and tertiary text on 37; the accent fails AA-large on 3 (`ayu-light`,
