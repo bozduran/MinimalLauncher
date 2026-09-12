@@ -9,7 +9,7 @@
 
 ## Implementation status
 
-Implemented on branch `refactor/user-stories-implementation` (33 stories complete, 7 partial — 40 of 41 touched).
+Implemented on branch `refactor/user-stories-implementation` (33 stories complete, 8 partial — 41 of 41 touched).
 Every commit below is atomic and was verified with `./gradlew assembleDebug assembleRelease testDebugUnitTest`
 plus a green test run before committing. **236 unit tests, 0 failures**, lint clean and blocking.
 
@@ -56,8 +56,12 @@ plus a green test run before committing. **236 unit tests, 0 failures**, lint cl
 | PERF-5 lifecycle-aware UI work | ⚠️ partial — changes in place; recomposition counts unmeasured | `9238155` |
 | A11Y-1 screen-reader routes | ⚠️ partial — semantics added; TalkBack behaviour unverified | `085ff1a`
 
-**Still open (1 story):** PERF-3 (baseline profiles) — must be generated from a
-measured device run; writing one by hand would be fabrication.
+**Open (0 stories) — all 41 are now touched.**
+
+**Partial (8):** DATA-4, PERF-2, PERF-3, PERF-5, PERF-6, QA-3, A11Y-1, A11Y-2.
+Each partial's remaining criterion is listed in the device-verification table below;
+seven of the eight need a device or emulator run, and PERF-6 needs an owner decision
+on the applicationId.
 
 ### Device verification policy
 
@@ -73,7 +77,7 @@ Consequences for the open stories — these are the reasons they are not closed:
 | A11Y-1 TalkBack reach | Needs a real accessibility service | ⚠️ semantics added; announcements unverified |
 | A11Y-2 font scale / tap targets | Needs a device at 1.3x–2.0x font scale | ⚠️ tap targets fixed; font scale unverified |
 | PERF-5 recomposition counts | Needs Layout Inspector / JankStats on a device | ⚠️ changes landed; counts unmeasured |
-| PERF-3 baseline profiles | Profiles are generated and measured on a device | Open — not startable |
+| PERF-3 baseline profiles | Profiles are generated and measured on a device | ⚠️ infrastructure done; CI generates the profile |
 | PLAT-1 `LauncherApps` / work profiles | Needs a work profile or second user | ✅ done — enumeration is behind an interface and unit-tested; only the on-device rendering is unverified |
 
 PLAT-1 was the exception and is now complete: the profile-aware enumeration sits
