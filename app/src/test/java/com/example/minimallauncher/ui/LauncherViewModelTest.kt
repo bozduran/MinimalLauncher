@@ -115,6 +115,76 @@ class LauncherViewModelTest {
         assertEquals(2, vm.allApps.value.size)
     }
 
+    // ── DATA-2: hiding an app removes it from the home screen ───────────────
+
+    @Test
+    fun `a hidden favorite is removed from the home screen`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val settings = FakeSettingsRepository().apply {
+            setFavorites("chrome", "maps")
+            setHidden("maps")
+        }
+        val vm = viewModel(appRepo = repo, settingsRepo = settings)
+
+        advanceUntilIdle()
+
+        assertEquals(
+            "hide must mean hidden everywhere, not just in the drawer",
+            listOf("Chrome"),
+            vm.favorites.value.map { it.label },
+        )
+    }
+
+    @Test
+    fun `the favorite flag is retained while an app is hidden`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val settings = FakeSettingsRepository().apply {
+            setFavorites("chrome", "maps")
+            setHidden("maps")
+        }
+        val vm = viewModel(appRepo = repo, settingsRepo = settings)
+        advanceUntilIdle()
+
+        // The settings screen still renders Maps as favorited so unhiding can
+        // restore the previous ordering.
+        assertEquals(setOf("chrome", "maps"), vm.favoriteSet.value)
+    }
+
+    @Test
+    fun `unhiding an app restores it to the home screen in its saved position`() =
+        runTest(dispatcher) {
+            val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps"), app("Photos")))
+            val settings = FakeSettingsRepository().apply {
+                setFavorites("photos", "maps", "chrome")
+                setHidden("maps")
+            }
+            val vm = viewModel(appRepo = repo, settingsRepo = settings)
+            advanceUntilIdle()
+            assertEquals(listOf("Photos", "Chrome"), vm.favorites.value.map { it.label })
+
+            vm.toggleHidden("maps")
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("Photos", "Maps", "Chrome"),
+                vm.favorites.value.map { it.label },
+            )
+        }
+
+    @Test
+    fun `hiding a non-favorite does not affect the home screen`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val settings = FakeSettingsRepository().apply { setFavorites("chrome") }
+        val vm = viewModel(appRepo = repo, settingsRepo = settings)
+        advanceUntilIdle()
+
+        vm.toggleHidden("maps")
+        advanceUntilIdle()
+
+        assertEquals(listOf("Chrome"), vm.favorites.value.map { it.label })
+        assertEquals(listOf("Chrome"), vm.drawerApps.value.map { it.label })
+    }
+
     // ── STAB-3: single-flight, conflated reloads ────────────────────────────
 
     @Test

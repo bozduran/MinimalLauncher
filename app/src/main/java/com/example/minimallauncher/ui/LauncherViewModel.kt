@@ -98,11 +98,19 @@ class LauncherViewModel(
 
     val hiddenSet: StateFlow<Set<String>> = hiddenPkgs
 
-    /** Apps shown on the home screen, in the saved favorite order. */
+    /**
+     * Apps shown on the home screen, in the saved favorite order.
+     *
+     * Hidden apps are excluded: "hide app" in the drawer means the app should not
+     * be reachable from the launcher, and leaving it on the home screen made the
+     * action mean two different things. The favorite *flag* is deliberately kept
+     * (see [favoriteSet]) so the settings screen still shows the app as favorited
+     * and unhiding restores its previous position.
+     */
     val favorites: StateFlow<List<AppInfo>> =
-        combine(allAppsFlow, favoritePkgs) { apps, favs ->
+        combine(allAppsFlow, favoritePkgs, hiddenPkgs) { apps, favs, hidden ->
             val byPkg = apps.associateBy { it.packageName }
-            favs.mapNotNull { byPkg[it] }
+            favs.mapNotNull { byPkg[it] }.filter { it.packageName !in hidden }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Apps shown in the drawer: not hidden, filtered by the (Greek-aware) query. */
