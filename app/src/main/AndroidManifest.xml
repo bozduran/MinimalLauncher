@@ -11,6 +11,31 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MinimalLauncher">
 
+        <!--
+          This Activity *is* the device's home screen, so every attribute below is
+          load-bearing. See docs/ARCHITECTURE.md §3 and USER_STORIES.md PLAT-3.
+
+          launchMode="singleTask"
+            Required so that pressing Home while the launcher is already running
+            re-delivers the MAIN/HOME intent through onNewIntent instead of creating
+            a second instance. MainActivity resets to the home screen there.
+
+          stateNotNeeded="true"
+            The system may recreate this Activity *without* onSaveInstanceState. The
+            ViewModel therefore must not assume saved state exists: it seeds the
+            search query from SavedStateHandle but works with an empty handle, and
+            rememberSaveable state (the pager page, the settings flag) is treated as
+            best-effort rather than guaranteed.
+
+          configChanges
+            Absorbed so the launcher does not flicker or lose its position on a
+            rotation or a system-theme change. Note what is NOT listed: density and
+            fontScale still recreate the Activity, so those paths must work — they
+            are exercised by the tests and by PLAT-3's manual check.
+
+          windowSoftInputMode="adjustResize"
+            Pairs with enableEdgeToEdge; the drawer also applies imePadding().
+        -->
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"

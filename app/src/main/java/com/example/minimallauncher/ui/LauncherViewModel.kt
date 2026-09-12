@@ -1,5 +1,6 @@
 package com.example.minimallauncher.ui
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.minimallauncher.data.AppChangeSource
@@ -44,6 +45,13 @@ class LauncherViewModel(
     private val settingsRepo: SettingsRepository,
     appChangeSource: AppChangeSource,
     private val gateway: LauncherGateway,
+    /**
+     * Survives process death where `rememberSaveable` cannot.
+     *
+     * Defaulted so tests can construct a ViewModel directly; the factory supplies a
+     * real handle backed by the Activity's saved state.
+     */
+    private val savedState: SavedStateHandle = SavedStateHandle(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val logger: AppLogger = LogcatAppLogger(),
@@ -96,7 +104,14 @@ class LauncherViewModel(
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
 
-    val query = MutableStateFlow("")
+    /**
+     * The search query.
+     *
+     * Seeded from [savedState] so a search survives process death. Restoring it must
+     * never open an app, which is why [userEditGeneration] starts at 0 for a
+     * restored value: only a user edit in this session can trigger auto-launch.
+     */
+    val query = MutableStateFlow(savedState.get<String>(KEY_QUERY) ?: "")
 
     // Emits when the user presses Home so the UI scrolls back to page 0.
     private val _goHome = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -287,7 +302,7 @@ class LauncherViewModel(
         if (q == query.value) return
         userEditGeneration++
         if (q.isBlank()) lastAutoLaunchedPackage = null
-        query.value = q
+        persistQuery(q)
     }
 
     /**
@@ -366,9 +381,16 @@ class LauncherViewModel(
      * Home button). Returning via Back left the drawer open on a stale query.
      */
     fun onReturnToHome() {
-        query.value = ""
+        // Cleared through the same path as an edit so the persisted value does not
+        // restore a stale search next time the launcher is recreated.
+        persistQuery("")
         lastAutoLaunchedPackage = null
         _goHome.tryEmit(Unit)
+    }
+
+    private fun persistQuery(value: String) {
+        query.value = value
+        savedState[KEY_QUERY] = value
     }
 
     fun toggleFavorite(pkg: String) = settingsWrite { settingsRepo.toggleFavorite(pkg) }
@@ -395,6 +417,8 @@ class LauncherViewModel(
     }
 
     private companion object {
+        const val KEY_QUERY = "query"
+
         const val TAG_APP_LIST = "app-list-load"
         const val TAG_SETTINGS = "settings-write"
         const val TAG_GATEWAY = "launcher-gateway"

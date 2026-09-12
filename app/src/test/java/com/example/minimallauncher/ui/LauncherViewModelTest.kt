@@ -54,11 +54,13 @@ class LauncherViewModelTest {
         ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = dispatcher,
         computationDispatcher: kotlinx.coroutines.CoroutineDispatcher = dispatcher,
         logger: com.example.minimallauncher.data.AppLogger = RecordingAppLogger(),
+        savedState: androidx.lifecycle.SavedStateHandle = androidx.lifecycle.SavedStateHandle(),
     ) = LauncherViewModel(
         appRepo,
         settingsRepo,
         changeSource,
         gateway,
+        savedState,
         ioDispatcher,
         computationDispatcher,
         logger,
@@ -533,6 +535,86 @@ class LauncherViewModelTest {
             assertEquals(false, vm.isLoadingApps.value)
             assertEquals(listOf("Chrome"), vm.allApps.value.map { it.label })
         }
+
+    // ── PLAT-3: survive process death ───────────────────────────────────────
+
+    @Test
+    fun `the search query survives view model recreation`() = runTest(dispatcher) {
+        val handle = androidx.lifecycle.SavedStateHandle()
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        viewModel(appRepo = repo, savedState = handle).apply {
+            advanceUntilIdle()
+            setQuery("chr")
+        }
+
+        // A new ViewModel over the same saved state, as after process death.
+        val restored = viewModel(appRepo = repo, savedState = handle)
+        advanceUntilIdle()
+
+        assertEquals("chr", restored.query.value)
+        assertEquals(listOf("Chrome"), restored.drawerApps.value.map { it.label })
+    }
+
+    @Test
+    fun `a query restored from saved state never auto-launches`() = runTest(dispatcher) {
+        val handle = androidx.lifecycle.SavedStateHandle()
+        handle["query"] = "chr"
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val gateway = FakeLauncherGateway()
+
+        val restored = viewModel(appRepo = repo, gateway = gateway, savedState = handle)
+        testScheduler.advanceTimeBy(1_000)
+        advanceUntilIdle()
+
+        assertEquals("chr", restored.query.value)
+        assertTrue("restoring a search must never open an app", gateway.calls.isEmpty())
+    }
+
+    @Test
+    fun `an empty saved state restores an empty query without crashing`() = runTest(dispatcher) {
+        // stateNotNeeded="true" means the handle may legitimately be empty.
+        val repo = FakeAppRepository(listOf(app("Chrome")))
+        val vm = viewModel(appRepo = repo, savedState = androidx.lifecycle.SavedStateHandle())
+
+        advanceUntilIdle()
+
+        assertEquals("", vm.query.value)
+        assertEquals(listOf("Chrome"), vm.drawerApps.value.map { it.label })
+    }
+
+    @Test
+    fun `returning home clears the persisted query`() = runTest(dispatcher) {
+        val handle = androidx.lifecycle.SavedStateHandle()
+        val repo = FakeAppRepository(listOf(app("Chrome")))
+        val vm = viewModel(appRepo = repo, savedState = handle)
+        advanceUntilIdle()
+        vm.setQuery("chr")
+
+        vm.onReturnToHome()
+        advanceUntilIdle()
+
+        assertEquals("", handle.get<String>("query"))
+        assertEquals("", viewModel(appRepo = repo, savedState = handle).query.value)
+    }
+
+    @Test
+    fun `a restored query is not treated as a user edit`() = runTest(dispatcher) {
+        // The generation guard is what makes restore safe; this pins that seeding
+        // from saved state does not count as an edit.
+        val handle = androidx.lifecycle.SavedStateHandle()
+        handle["query"] = "chr"
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val gateway = FakeLauncherGateway()
+        val vm = viewModel(appRepo = repo, gateway = gateway, savedState = handle)
+        advanceUntilIdle()
+
+        // A real edit for a different app must still auto-launch.
+        vm.setQuery("map")
+        testScheduler.advanceTimeBy(400)
+        testScheduler.runCurrent()
+
+        assertEquals(listOf("maps"), gateway.launchedPackages)
+    }
 
     // ── DRAW-2: search-focus failures are reported, not swallowed ───────────
 
