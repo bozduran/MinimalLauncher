@@ -107,7 +107,7 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
                 .fillMaxWidth(),
             contentPadding = PaddingValues(vertical = 6.dp),
         ) {
-            items(apps, key = { it.key }) { app ->
+            items(apps, key = { it.packageName }) { app ->
                 Text(
                     text = app.label,
                     fontFamily = JetBrainsMono,

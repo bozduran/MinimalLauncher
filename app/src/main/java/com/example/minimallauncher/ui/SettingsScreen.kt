@@ -99,7 +99,7 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
             item {
                 SectionLabel("favorites — tap to toggle")
             }
-            items(apps, key = { it.key }) { app ->
+            items(apps, key = { it.packageName }) { app ->
                 val isFav = app.packageName in favorites
                 val isHidden = app.packageName in hidden
                 Row(

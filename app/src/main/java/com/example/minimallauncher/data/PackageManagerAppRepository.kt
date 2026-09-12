@@ -29,8 +29,7 @@ class PackageManagerAppRepository(private val context: Context) : AppRepository 
             // PackageManager throwing where AOSP returns null) must not fail the
             // whole enumeration and leave the launcher with no app list at all.
             .mapNotNull { resolveInfo -> runCatching { toAppInfo(resolveInfo, pm, myPackage) }.getOrNull() }
-            .distinctBy { it.key }
-            .sortedWith(compareBy(collator) { it.label })
+            .let { AppListOrdering.collapseAndSort(it, collator) }
     }
 
     private fun toAppInfo(resolveInfo: ResolveInfo, pm: PackageManager, myPackage: String): AppInfo? {
