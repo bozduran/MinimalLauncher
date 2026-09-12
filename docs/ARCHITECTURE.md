@@ -242,6 +242,21 @@ tracked as QA-3 and the on-device verification items in `USER_STORIES.md`.
 
 ---
 
+### Repository hygiene
+
+Every module needs its own `build/` entry in the root `.gitignore`. `/app/build` was
+listed explicitly, so adding `:baselineprofile` without an entry for it let a single
+`git add -A` commit 989 build artifacts (intermediates, generated manifests and the
+bundled `trace_processor`/`tracebox` binaries). They have since been untracked, but
+they **remain in git history** — before this branch is pushed anywhere, consider
+rewriting it out:
+
+```
+git filter-repo --path baselineprofile/build --invert-paths
+```
+
+Prefer `git add <paths>` over `git add -A` when a build has run.
+
 ## 7. When to split into modules
 
 Not yet, and not at this size. Split when one of these becomes true:
