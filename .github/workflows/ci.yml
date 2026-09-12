@@ -54,7 +54,11 @@ jobs:
           target: default
           arch: x86_64
           profile: pixel_5
-          script: ./gradlew connectedDebugAndroidTest --stacktrace
+          # QA-3 and PERF-3 share the emulator: the instrumented tests run first,
+          # then the baseline profile is generated from a measured start-up run.
+          script: |
+            ./gradlew connectedDebugAndroidTest --stacktrace
+            ./gradlew :app:generateBaselineProfile --stacktrace
 
       - name: Upload test reports
         if: always()

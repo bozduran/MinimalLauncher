@@ -4,6 +4,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    // PERF-3: creates the `baselineProfile` configuration the :baselineprofile
+    // module feeds, and the generateBaselineProfile task.
+    alias(libs.plugins.androidx.baselineprofile)
 }
 
 android {
@@ -127,4 +130,10 @@ dependencies {
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.rules)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+    // PERF-3: profileinstaller (which applies the generated profile at install time)
+    // is added by the baselineprofile plugin and is already on the classpath
+    // transitively via activity/ui, so it is not declared explicitly here.
+    // The profile generator lives in :baselineprofile and runs on a device.
+    "baselineProfile"(project(":baselineprofile"))
 }

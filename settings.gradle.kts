@@ -21,3 +21,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "MinimalLauncher"
 include(":app")
+// PERF-3: generates the baseline profile. Requires a connected device or emulator:
+//   ./gradlew :app:generateBaselineProfile
+include(":baselineprofile")
