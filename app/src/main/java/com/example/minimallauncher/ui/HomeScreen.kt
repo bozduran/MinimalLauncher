@@ -30,7 +30,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.minimallauncher.R
+import com.example.minimallauncher.ui.theme.AppTextStyles
 import com.example.minimallauncher.ui.theme.Bg
+import com.example.minimallauncher.ui.theme.Dimens
 import com.example.minimallauncher.ui.theme.JetBrainsMono
 import com.example.minimallauncher.ui.theme.TextPrimary
 import com.example.minimallauncher.ui.theme.TextSecondary
@@ -86,24 +88,19 @@ fun HomeScreen(
                 .pointerInput(Unit) {
                     detectTapGestures(onLongPress = { onOpenSettings() })
                 }
-                .padding(horizontal = 30.dp),
+                .padding(horizontal = Dimens.ScreenPadding),
             verticalArrangement = Arrangement.Center,
         ) {
             Text(
                 text = clock.time(now, use24h),
-                fontFamily = JetBrainsMono,
-                fontWeight = FontWeight.Light,
-                fontSize = 66.sp,
-                lineHeight = 70.sp,
+                style = AppTextStyles.Clock,
                 color = TextPrimary,
                 modifier = Modifier.clickable { vm.openClock() },
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(Dimens.SpaceXs))
             Text(
                 text = clock.date(now),
-                fontFamily = JetBrainsMono,
-                fontWeight = FontWeight.Normal,
-                fontSize = 15.sp,
+                style = AppTextStyles.Date,
                 color = TextSecondary,
                 modifier = Modifier.clickable { vm.openCalendar() },
             )
@@ -122,15 +119,13 @@ fun HomeScreen(
                 visibleFavorites.forEach { app ->
                     Text(
                         text = app.label,
-                        fontFamily = JetBrainsMono,
-                        fontWeight = FontWeight.Normal,
-                        fontSize = 23.sp,
+                        style = AppTextStyles.Favorite,
                         color = TextPrimary,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(Dimens.RowCorner))
                             .clickable { vm.launchApp(app) }
-                            .padding(vertical = 11.dp),
+                            .padding(vertical = Dimens.RowVertical),
                     )
                 }
 
@@ -139,14 +134,13 @@ fun HomeScreen(
                 if (overflow > 0) {
                     Text(
                         text = pluralStringResource(R.plurals.home_more_favorites, overflow, overflow),
-                        fontFamily = JetBrainsMono,
-                        fontSize = 18.sp,
+                        style = AppTextStyles.ListRow,
                         color = TextSecondary,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(Dimens.RowCorner))
                             .clickable { onOpenDrawer() }
-                            .padding(vertical = 11.dp),
+                            .padding(vertical = Dimens.RowVertical),
                     )
                 }
             }
@@ -154,8 +148,7 @@ fun HomeScreen(
             Spacer(Modifier.height(40.dp))
             Text(
                 text = stringResource(R.string.home_open_drawer),
-                fontFamily = JetBrainsMono,
-                fontSize = 12.sp,
+                style = AppTextStyles.Footer,
                 color = TextTertiary,
                 textAlign = TextAlign.Start,
             )
@@ -167,9 +160,7 @@ fun HomeScreen(
 private fun HomeHint(text: String) {
     Text(
         text = text,
-        fontFamily = JetBrainsMono,
-        fontSize = 13.sp,
-        lineHeight = 20.sp,
+        style = AppTextStyles.Hint,
         color = TextTertiary,
     )
 }

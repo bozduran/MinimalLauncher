@@ -36,7 +36,9 @@ import androidx.compose.ui.window.Dialog
 import com.example.minimallauncher.R
 import com.example.minimallauncher.data.AppInfo
 import com.example.minimallauncher.ui.theme.Accent
+import com.example.minimallauncher.ui.theme.AppTextStyles
 import com.example.minimallauncher.ui.theme.Bg
+import com.example.minimallauncher.ui.theme.Dimens
 import com.example.minimallauncher.ui.theme.BorderCol
 import com.example.minimallauncher.ui.theme.JetBrainsMono
 import com.example.minimallauncher.ui.theme.SurfaceCol
@@ -82,7 +84,7 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
         SearchField(
             query = query,
             onChange = vm::setQuery,
-            modifier = Modifier.padding(horizontal = 28.dp, vertical = 14.dp),
+            modifier = Modifier.padding(horizontal = Dimens.RowPadding, vertical = Dimens.MenuRowVertical),
             focusRequester = focusRequester,
             onSearch = { vm.submitSearch() },
         )
@@ -97,9 +99,7 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
             items(apps, key = { it.packageName }) { app ->
                 Text(
                     text = app.label,
-                    fontFamily = JetBrainsMono,
-                    fontWeight = FontWeight.Normal,
-                    fontSize = 20.sp,
+                    style = AppTextStyles.DrawerItem,
                     color = TextPrimary,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -107,7 +107,7 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
                             onClick = { vm.launchApp(app) },
                             onLongClick = { menuApp = app },
                         )
-                        .padding(horizontal = 30.dp, vertical = 13.dp),
+                        .padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.DrawerRowVertical),
                 )
             }
         }
@@ -140,18 +140,19 @@ private fun AppMenu(
         Column(
             modifier = Modifier
                 .widthIn(min = 250.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(Dimens.PanelCorner))
                 .background(SurfaceCol)
-                .border(1.dp, BorderCol, RoundedCornerShape(16.dp))
+                .border(1.dp, BorderCol, RoundedCornerShape(Dimens.PanelCorner))
                 .padding(vertical = 8.dp),
         ) {
             Text(
                 text = app.label,
-                fontFamily = JetBrainsMono,
-                fontWeight = FontWeight.Medium,
-                fontSize = 15.sp,
+                style = AppTextStyles.MenuHeader,
                 color = TextSecondary,
-                modifier = Modifier.padding(horizontal = 22.dp, vertical = 10.dp),
+                modifier = Modifier.padding(
+                    horizontal = Dimens.MenuPadding,
+                    vertical = Dimens.MenuHeaderVertical,
+                ),
             )
             HorizontalDivider(color = BorderCol, thickness = 1.dp)
             MenuRow(
@@ -170,12 +171,11 @@ private fun AppMenu(
 private fun MenuRow(text: String, onClick: () -> Unit, color: androidx.compose.ui.graphics.Color = TextPrimary) {
     Text(
         text = text,
-        fontFamily = JetBrainsMono,
-        fontSize = 16.sp,
+        style = AppTextStyles.MenuRow,
         color = color,
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(horizontal = 22.dp, vertical = 14.dp),
+            .padding(horizontal = Dimens.MenuPadding, vertical = Dimens.MenuRowVertical),
     )
 }

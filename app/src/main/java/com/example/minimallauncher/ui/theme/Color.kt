@@ -2,7 +2,8 @@ package com.example.minimallauncher.ui.theme
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
-import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -10,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 // ─────────────────────────────────────────────────────────────────────────
 
 /** The 12 colors the launcher UI needs. */
+@Immutable
 data class LauncherPalette(
     val bg: Color,
     val surface: Color,
@@ -93,42 +95,150 @@ val AppThemes: List<ThemeOption> = listOf(
     ThemeOption("warm-dark", "Warm Dark", WarmDark),
     ThemeOption("paper", "Paper", Paper),
     //                       bg        surface   border    text      text2     accent    accentSoft
-    ThemeOption("tokyo-night", "Tokyo Night", p(0x1A1B26, 0x24283B, 0x2F3549, 0xC0CAF5, 0x565F89, 0x7AA2F7, 0xBB9AF7)),
-    ThemeOption("nord", "Nord", p(0x2E3440, 0x3B4252, 0x434C5E, 0xD8DEE9, 0x7B88A1, 0x88C0D0, 0xA3BE8C)),
-    ThemeOption("solarized-dark", "Solarized Dark", p(0x002B36, 0x073642, 0x0A4A5A, 0x93A1A1, 0x586E75, 0x268BD2, 0x2AA198)),
-    ThemeOption("gruvbox-dark", "Gruvbox Dark", p(0x282828, 0x3C3836, 0x504945, 0xEBDBB2, 0xA89984, 0xFABD2F, 0x8EC07C)),
-    ThemeOption("dracula", "Dracula", p(0x282A36, 0x343746, 0x44475A, 0xF8F8F2, 0x7A82A8, 0xBD93F9, 0xFF79C6)),
-    ThemeOption("one-dark", "One Dark", p(0x282C34, 0x2F343F, 0x3B4048, 0xABB2BF, 0x727885, 0x61AFEF, 0x98C379)),
-    ThemeOption("catppuccin-mocha", "Catppuccin Mocha", p(0x1E1E2E, 0x313244, 0x45475A, 0xCDD6F4, 0xA6ADC8, 0x89B4FA, 0xF5C2E7)),
-    ThemeOption("ayu-dark", "Ayu Dark", p(0x0F1419, 0x1C2128, 0x23282E, 0xBFBDB6, 0x6B7178, 0xE6B450, 0x59C2FF)),
-    ThemeOption("night-owl", "Night Owl", p(0x011627, 0x0B2942, 0x1D3B53, 0xD6DEEB, 0x7E8FA3, 0x82AAFF, 0xC792EA)),
-    ThemeOption("rose-pine", "Rosé Pine", p(0x191724, 0x1F1D2E, 0x26233A, 0xE0DEF4, 0x908CAA, 0xEBBCBA, 0xC4A7E7)),
-    ThemeOption("catppuccin-macchiato", "Catppuccin Macchiato", p(0x24273A, 0x363A4F, 0x494D64, 0xCAD3F5, 0xA5ADCB, 0x8AADF4, 0xF5BDE6)),
-    ThemeOption("kanagawa-wave", "Kanagawa Wave", p(0x1F1F28, 0x2A2A37, 0x363646, 0xDCD7BA, 0x727169, 0x7E9CD8, 0x98BB6C)),
-    ThemeOption("everforest-dark", "Everforest Dark", p(0x2D353B, 0x343F44, 0x3D484D, 0xD3C6AA, 0x859289, 0xA7C080, 0x7FBBB3)),
-    ThemeOption("palenight", "Palenight", p(0x292D3E, 0x333851, 0x3A3F58, 0xA6ACCD, 0x676E95, 0x82AAFF, 0xC792EA)),
-    ThemeOption("material-ocean", "Material Ocean", p(0x0F111A, 0x1A1C25, 0x1F2233, 0xA6ACCD, 0x4B526D, 0x82AAFF, 0xC3E88D)),
-    ThemeOption("monokai-pro", "Monokai Pro", p(0x2D2A2E, 0x353236, 0x403E41, 0xFCFCFA, 0x939293, 0xFFD866, 0xA9DC76)),
-    ThemeOption("rose-pine-moon", "Rosé Pine Moon", p(0x232136, 0x2A273F, 0x393552, 0xE0DEF4, 0x908CAA, 0xEA9A97, 0xC4A7E7)),
-    ThemeOption("flexoki-dark", "Flexoki Dark", p(0x100F0F, 0x1C1B1A, 0x282726, 0xCECDC3, 0x878580, 0x4385BE, 0x879A39)),
-    ThemeOption("solarized-light", "Solarized Light", p(0xFDF6E3, 0xEEE8D5, 0xE3DCC4, 0x586E75, 0x93A1A1, 0x268BD2, 0x2AA198)),
-    ThemeOption("gruvbox-light", "Gruvbox Light", p(0xFBF1C7, 0xF2E5BC, 0xE6D8A8, 0x3C3836, 0x7C6F64, 0xB57614, 0x427B58)),
-    ThemeOption("atom-one-light", "Atom One Light", p(0xFAFAFA, 0xF0F0F0, 0xE1E1E3, 0x383A42, 0x8B8D94, 0x4078F2, 0x50A14F)),
-    ThemeOption("catppuccin-latte", "Catppuccin Latte", p(0xEFF1F5, 0xE6E9EF, 0xCCD0DA, 0x4C4F69, 0x8C8FA1, 0x1E66F5, 0xEA76CB)),
-    ThemeOption("sepia-paper", "Sepia Paper", p(0xF4ECD8, 0xECE2C8, 0xDDD0B0, 0x5B4636, 0x8D7D63, 0xA8541F, 0x6B8E23)),
-    ThemeOption("github-light", "GitHub Light", p(0xFFFFFF, 0xF6F8FA, 0xD0D7DE, 0x24292F, 0x6E7781, 0x0969DA, 0x1A7F37)),
-    ThemeOption("ayu-light", "Ayu Light", p(0xFAFAFA, 0xF3F4F5, 0xE7E8E9, 0x5C6166, 0x8A9199, 0xF2952C, 0x399EE6)),
-    ThemeOption("tokyo-day", "Tokyo Day", p(0xE1E2E7, 0xD4D6E4, 0xC4C8DA, 0x343B58, 0x6C739A, 0x2E7DE9, 0x9854F1)),
-    ThemeOption("rose-pine-dawn", "Rosé Pine Dawn", p(0xFAF4ED, 0xFFFAF3, 0xDFDAD9, 0x575279, 0x9893A5, 0xD7827E, 0x907AA9)),
-    ThemeOption("everforest-light", "Everforest Light", p(0xFFFBEF, 0xF4F0D9, 0xE6E2CC, 0x5C6A72, 0x939F91, 0x8DA101, 0x3A94C5)),
-    ThemeOption("quiet-light", "Quiet Light", p(0xF5F5F5, 0xECECEC, 0xDCDCDC, 0x333333, 0x888888, 0x4B83CD, 0x7A3E9D)),
-    ThemeOption("kanagawa-lotus", "Kanagawa Lotus", p(0xF2ECBC, 0xE7DBA0, 0xDDD5A8, 0x545464, 0x8A8980, 0x4D699B, 0x6E915F)),
-    ThemeOption("flexoki-light", "Flexoki Light", p(0xFFFCF0, 0xF2F0E5, 0xE6E4D9, 0x343331, 0x6F6E69, 0x205EA6, 0x66800B)),
-    ThemeOption("nord-light", "Nord Light", p(0xECEFF4, 0xE5E9F0, 0xD8DEE9, 0x2E3440, 0x6C7589, 0x5E81AC, 0x5B8A5A)),
-    ThemeOption("material-light", "Material Light", p(0xFAFAFA, 0xEEF0F1, 0xE0E2E4, 0x2F3337, 0x8A9196, 0x4071B8, 0x5A8F2F)),
-    ThemeOption("papercolor-light", "PaperColor Light", p(0xEEEEEE, 0xE4E4E4, 0xD0D0D0, 0x444444, 0x878787, 0x0087AF, 0x008700)),
-    ThemeOption("tomorrow-light", "Tomorrow Light", p(0xFFFFFF, 0xEFEFEF, 0xD6D6D6, 0x4D4D4C, 0x8E908C, 0x4271AE, 0x4F7A28)),
-    ThemeOption("modus-operandi", "Modus Operandi", p(0xFFFFFF, 0xF2F2F2, 0xD7D7D7, 0x000000, 0x595959, 0x0031A9, 0x006800)),
+    ThemeOption("tokyo-night", "Tokyo Night", p(
+            bg = 0x1A1B26, surface = 0x24283B, border = 0x2F3549,
+            text = 0xC0CAF5, text2 = 0x565F89, accent = 0x7AA2F7, accentSoft = 0xBB9AF7,
+        )),
+    ThemeOption("nord", "Nord", p(
+            bg = 0x2E3440, surface = 0x3B4252, border = 0x434C5E,
+            text = 0xD8DEE9, text2 = 0x7B88A1, accent = 0x88C0D0, accentSoft = 0xA3BE8C,
+        )),
+    ThemeOption("solarized-dark", "Solarized Dark", p(
+            bg = 0x002B36, surface = 0x073642, border = 0x0A4A5A,
+            text = 0x93A1A1, text2 = 0x586E75, accent = 0x268BD2, accentSoft = 0x2AA198,
+        )),
+    ThemeOption("gruvbox-dark", "Gruvbox Dark", p(
+            bg = 0x282828, surface = 0x3C3836, border = 0x504945,
+            text = 0xEBDBB2, text2 = 0xA89984, accent = 0xFABD2F, accentSoft = 0x8EC07C,
+        )),
+    ThemeOption("dracula", "Dracula", p(
+            bg = 0x282A36, surface = 0x343746, border = 0x44475A,
+            text = 0xF8F8F2, text2 = 0x7A82A8, accent = 0xBD93F9, accentSoft = 0xFF79C6,
+        )),
+    ThemeOption("one-dark", "One Dark", p(
+            bg = 0x282C34, surface = 0x2F343F, border = 0x3B4048,
+            text = 0xABB2BF, text2 = 0x727885, accent = 0x61AFEF, accentSoft = 0x98C379,
+        )),
+    ThemeOption("catppuccin-mocha", "Catppuccin Mocha", p(
+            bg = 0x1E1E2E, surface = 0x313244, border = 0x45475A,
+            text = 0xCDD6F4, text2 = 0xA6ADC8, accent = 0x89B4FA, accentSoft = 0xF5C2E7,
+        )),
+    ThemeOption("ayu-dark", "Ayu Dark", p(
+            bg = 0x0F1419, surface = 0x1C2128, border = 0x23282E,
+            text = 0xBFBDB6, text2 = 0x6B7178, accent = 0xE6B450, accentSoft = 0x59C2FF,
+        )),
+    ThemeOption("night-owl", "Night Owl", p(
+            bg = 0x011627, surface = 0x0B2942, border = 0x1D3B53,
+            text = 0xD6DEEB, text2 = 0x7E8FA3, accent = 0x82AAFF, accentSoft = 0xC792EA,
+        )),
+    ThemeOption("rose-pine", "Rosé Pine", p(
+            bg = 0x191724, surface = 0x1F1D2E, border = 0x26233A,
+            text = 0xE0DEF4, text2 = 0x908CAA, accent = 0xEBBCBA, accentSoft = 0xC4A7E7,
+        )),
+    ThemeOption("catppuccin-macchiato", "Catppuccin Macchiato", p(
+            bg = 0x24273A, surface = 0x363A4F, border = 0x494D64,
+            text = 0xCAD3F5, text2 = 0xA5ADCB, accent = 0x8AADF4, accentSoft = 0xF5BDE6,
+        )),
+    ThemeOption("kanagawa-wave", "Kanagawa Wave", p(
+            bg = 0x1F1F28, surface = 0x2A2A37, border = 0x363646,
+            text = 0xDCD7BA, text2 = 0x727169, accent = 0x7E9CD8, accentSoft = 0x98BB6C,
+        )),
+    ThemeOption("everforest-dark", "Everforest Dark", p(
+            bg = 0x2D353B, surface = 0x343F44, border = 0x3D484D,
+            text = 0xD3C6AA, text2 = 0x859289, accent = 0xA7C080, accentSoft = 0x7FBBB3,
+        )),
+    ThemeOption("palenight", "Palenight", p(
+            bg = 0x292D3E, surface = 0x333851, border = 0x3A3F58,
+            text = 0xA6ACCD, text2 = 0x676E95, accent = 0x82AAFF, accentSoft = 0xC792EA,
+        )),
+    ThemeOption("material-ocean", "Material Ocean", p(
+            bg = 0x0F111A, surface = 0x1A1C25, border = 0x1F2233,
+            text = 0xA6ACCD, text2 = 0x4B526D, accent = 0x82AAFF, accentSoft = 0xC3E88D,
+        )),
+    ThemeOption("monokai-pro", "Monokai Pro", p(
+            bg = 0x2D2A2E, surface = 0x353236, border = 0x403E41,
+            text = 0xFCFCFA, text2 = 0x939293, accent = 0xFFD866, accentSoft = 0xA9DC76,
+        )),
+    ThemeOption("rose-pine-moon", "Rosé Pine Moon", p(
+            bg = 0x232136, surface = 0x2A273F, border = 0x393552,
+            text = 0xE0DEF4, text2 = 0x908CAA, accent = 0xEA9A97, accentSoft = 0xC4A7E7,
+        )),
+    ThemeOption("flexoki-dark", "Flexoki Dark", p(
+            bg = 0x100F0F, surface = 0x1C1B1A, border = 0x282726,
+            text = 0xCECDC3, text2 = 0x878580, accent = 0x4385BE, accentSoft = 0x879A39,
+        )),
+    ThemeOption("solarized-light", "Solarized Light", p(
+            bg = 0xFDF6E3, surface = 0xEEE8D5, border = 0xE3DCC4,
+            text = 0x586E75, text2 = 0x93A1A1, accent = 0x268BD2, accentSoft = 0x2AA198,
+        )),
+    ThemeOption("gruvbox-light", "Gruvbox Light", p(
+            bg = 0xFBF1C7, surface = 0xF2E5BC, border = 0xE6D8A8,
+            text = 0x3C3836, text2 = 0x7C6F64, accent = 0xB57614, accentSoft = 0x427B58,
+        )),
+    ThemeOption("atom-one-light", "Atom One Light", p(
+            bg = 0xFAFAFA, surface = 0xF0F0F0, border = 0xE1E1E3,
+            text = 0x383A42, text2 = 0x8B8D94, accent = 0x4078F2, accentSoft = 0x50A14F,
+        )),
+    ThemeOption("catppuccin-latte", "Catppuccin Latte", p(
+            bg = 0xEFF1F5, surface = 0xE6E9EF, border = 0xCCD0DA,
+            text = 0x4C4F69, text2 = 0x8C8FA1, accent = 0x1E66F5, accentSoft = 0xEA76CB,
+        )),
+    ThemeOption("sepia-paper", "Sepia Paper", p(
+            bg = 0xF4ECD8, surface = 0xECE2C8, border = 0xDDD0B0,
+            text = 0x5B4636, text2 = 0x8D7D63, accent = 0xA8541F, accentSoft = 0x6B8E23,
+        )),
+    ThemeOption("github-light", "GitHub Light", p(
+            bg = 0xFFFFFF, surface = 0xF6F8FA, border = 0xD0D7DE,
+            text = 0x24292F, text2 = 0x6E7781, accent = 0x0969DA, accentSoft = 0x1A7F37,
+        )),
+    ThemeOption("ayu-light", "Ayu Light", p(
+            bg = 0xFAFAFA, surface = 0xF3F4F5, border = 0xE7E8E9,
+            text = 0x5C6166, text2 = 0x8A9199, accent = 0xF2952C, accentSoft = 0x399EE6,
+        )),
+    ThemeOption("tokyo-day", "Tokyo Day", p(
+            bg = 0xE1E2E7, surface = 0xD4D6E4, border = 0xC4C8DA,
+            text = 0x343B58, text2 = 0x6C739A, accent = 0x2E7DE9, accentSoft = 0x9854F1,
+        )),
+    ThemeOption("rose-pine-dawn", "Rosé Pine Dawn", p(
+            bg = 0xFAF4ED, surface = 0xFFFAF3, border = 0xDFDAD9,
+            text = 0x575279, text2 = 0x9893A5, accent = 0xD7827E, accentSoft = 0x907AA9,
+        )),
+    ThemeOption("everforest-light", "Everforest Light", p(
+            bg = 0xFFFBEF, surface = 0xF4F0D9, border = 0xE6E2CC,
+            text = 0x5C6A72, text2 = 0x939F91, accent = 0x8DA101, accentSoft = 0x3A94C5,
+        )),
+    ThemeOption("quiet-light", "Quiet Light", p(
+            bg = 0xF5F5F5, surface = 0xECECEC, border = 0xDCDCDC,
+            text = 0x333333, text2 = 0x888888, accent = 0x4B83CD, accentSoft = 0x7A3E9D,
+        )),
+    ThemeOption("kanagawa-lotus", "Kanagawa Lotus", p(
+            bg = 0xF2ECBC, surface = 0xE7DBA0, border = 0xDDD5A8,
+            text = 0x545464, text2 = 0x8A8980, accent = 0x4D699B, accentSoft = 0x6E915F,
+        )),
+    ThemeOption("flexoki-light", "Flexoki Light", p(
+            bg = 0xFFFCF0, surface = 0xF2F0E5, border = 0xE6E4D9,
+            text = 0x343331, text2 = 0x6F6E69, accent = 0x205EA6, accentSoft = 0x66800B,
+        )),
+    ThemeOption("nord-light", "Nord Light", p(
+            bg = 0xECEFF4, surface = 0xE5E9F0, border = 0xD8DEE9,
+            text = 0x2E3440, text2 = 0x6C7589, accent = 0x5E81AC, accentSoft = 0x5B8A5A,
+        )),
+    ThemeOption("material-light", "Material Light", p(
+            bg = 0xFAFAFA, surface = 0xEEF0F1, border = 0xE0E2E4,
+            text = 0x2F3337, text2 = 0x8A9196, accent = 0x4071B8, accentSoft = 0x5A8F2F,
+        )),
+    ThemeOption("papercolor-light", "PaperColor Light", p(
+            bg = 0xEEEEEE, surface = 0xE4E4E4, border = 0xD0D0D0,
+            text = 0x444444, text2 = 0x878787, accent = 0x0087AF, accentSoft = 0x008700,
+        )),
+    ThemeOption("tomorrow-light", "Tomorrow Light", p(
+            bg = 0xFFFFFF, surface = 0xEFEFEF, border = 0xD6D6D6,
+            text = 0x4D4D4C, text2 = 0x8E908C, accent = 0x4271AE, accentSoft = 0x4F7A28,
+        )),
+    ThemeOption("modus-operandi", "Modus Operandi", p(
+            bg = 0xFFFFFF, surface = 0xF2F2F2, border = 0xD7D7D7,
+            text = 0x000000, text2 = 0x595959, accent = 0x0031A9, accentSoft = 0x006800,
+        )),
 )
 
 private val themesByKey: Map<String, LauncherPalette> = AppThemes.associate { it.key to it.palette }
@@ -141,7 +251,14 @@ fun paletteFor(key: String): LauncherPalette = themesByKey[key] ?: WarmDark
 // currently selected theme instead of fixed constants.
 // ─────────────────────────────────────────────────────────────────────────
 
-val LocalPalette = staticCompositionLocalOf { WarmDark }
+/**
+ * The active palette.
+ *
+ * [compositionLocalOf] rather than `staticCompositionLocalOf`: the palette changes
+ * when the user picks a theme, and tracking reads means only the ~12 colour readers
+ * recompose instead of the entire composition.
+ */
+val LocalPalette = compositionLocalOf { WarmDark }
 
 val Bg: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.bg
 val SurfaceCol: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.surface

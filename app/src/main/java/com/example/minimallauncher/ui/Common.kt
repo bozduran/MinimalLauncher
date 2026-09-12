@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import com.example.minimallauncher.R
 import com.example.minimallauncher.ui.theme.Accent
+import com.example.minimallauncher.ui.theme.AppTextStyles
 import com.example.minimallauncher.ui.theme.JetBrainsMono
 import com.example.minimallauncher.ui.theme.TextPrimary
 import com.example.minimallauncher.ui.theme.TextSecondary
@@ -53,11 +54,7 @@ fun SearchField(
                 value = query,
                 onValueChange = onChange,
                 singleLine = true,
-                textStyle = TextStyle(
-                    fontFamily = JetBrainsMono,
-                    fontSize = 20.sp,
-                    color = TextPrimary,
-                ),
+                textStyle = AppTextStyles.DrawerItem.copy(color = TextPrimary),
                 cursorBrush = SolidColor(Accent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { onSearch() }),
@@ -68,8 +65,7 @@ fun SearchField(
             if (query.isEmpty()) {
                 Text(
                     text = stringResource(R.string.search_hint),
-                    fontFamily = JetBrainsMono,
-                    fontSize = 20.sp,
+                    style = AppTextStyles.DrawerItem,
                     color = TextTertiary,
                 )
             }
@@ -77,9 +73,7 @@ fun SearchField(
         if (query.isNotEmpty()) {
             Text(
                 text = stringResource(R.string.search_clear_symbol),
-                fontFamily = JetBrainsMono,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Light,
+                style = AppTextStyles.SearchClear,
                 color = TextSecondary,
                 modifier = Modifier
                     .clickable { onChange("") }

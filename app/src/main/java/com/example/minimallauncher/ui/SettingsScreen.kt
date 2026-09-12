@@ -39,7 +39,9 @@ import androidx.compose.ui.unit.sp
 import com.example.minimallauncher.R
 import com.example.minimallauncher.ui.theme.Accent
 import com.example.minimallauncher.ui.theme.AccentRing
+import com.example.minimallauncher.ui.theme.AppTextStyles
 import com.example.minimallauncher.ui.theme.AppThemes
+import com.example.minimallauncher.ui.theme.Dimens
 import com.example.minimallauncher.ui.theme.Bg
 import com.example.minimallauncher.ui.theme.BorderCol
 import com.example.minimallauncher.ui.theme.BorderMid
@@ -65,22 +67,19 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 18.dp),
+                .padding(horizontal = Dimens.TitlePadding, vertical = Dimens.TitleVertical),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = stringResource(R.string.back_symbol),
-                fontFamily = JetBrainsMono,
-                fontSize = 30.sp,
+                style = AppTextStyles.BackSymbol,
                 color = TextPrimary,
                 modifier = Modifier.clickable { onBack() },
             )
             Spacer(Modifier.width(18.dp))
             Text(
                 text = stringResource(R.string.settings_title),
-                fontFamily = JetBrainsMono,
-                fontWeight = FontWeight.Medium,
-                fontSize = 22.sp,
+                style = AppTextStyles.ScreenTitle,
                 color = TextPrimary,
             )
         }
@@ -105,29 +104,26 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { vm.toggleFavorite(app.packageName) }
-                        .padding(horizontal = 28.dp, vertical = 13.dp),
+                        .padding(horizontal = Dimens.RowPadding, vertical = Dimens.DrawerRowVertical),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = if (isFav) stringResource(R.string.favorite_on_symbol)
                         else stringResource(R.string.favorite_off_symbol),
-                        fontFamily = JetBrainsMono,
-                        fontSize = 18.sp,
+                        style = AppTextStyles.ListRow,
                         color = if (isFav) Accent else TextTertiary,
                     )
                     Spacer(Modifier.width(16.dp))
                     Text(
                         text = app.label,
-                        fontFamily = JetBrainsMono,
-                        fontSize = 18.sp,
+                        style = AppTextStyles.ListRow,
                         color = if (isHidden) TextTertiary else TextPrimary,
                         modifier = Modifier.weight(1f),
                     )
                     if (isHidden) {
                         Text(
                             text = stringResource(R.string.settings_unhide),
-                            fontFamily = JetBrainsMono,
-                            fontSize = 13.sp,
+                            style = AppTextStyles.SectionLabel,
                             color = TextSecondary,
                             modifier = Modifier.clickable { vm.toggleHidden(app.packageName) },
                         )
@@ -142,7 +138,7 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
 private fun ThemePicker(current: String, onSelect: (String) -> Unit) {
     LazyRow(
         modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = 28.dp, vertical = 4.dp),
+        contentPadding = PaddingValues(horizontal = Dimens.RowPadding, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         items(AppThemes, key = { it.key }) { opt ->
@@ -157,12 +153,12 @@ private fun ThemePicker(current: String, onSelect: (String) -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(Dimens.SwatchCorner))
                         .background(opt.palette.bg)
                         .border(
                             width = if (selected) 2.dp else 1.dp,
                             color = if (selected) opt.palette.accent else opt.palette.borderMid,
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(Dimens.SwatchCorner),
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -175,8 +171,7 @@ private fun ThemePicker(current: String, onSelect: (String) -> Unit) {
                 Spacer(Modifier.height(6.dp))
                 Text(
                     text = opt.label,
-                    fontFamily = JetBrainsMono,
-                    fontSize = 11.sp,
+                    style = AppTextStyles.ThemeLabel,
                     color = if (selected) Accent else TextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -201,10 +196,14 @@ private fun Dot(color: Color) {
 private fun SectionLabel(text: String) {
     Text(
         text = text,
-        fontFamily = JetBrainsMono,
-        fontSize = 13.sp,
+        style = AppTextStyles.SectionLabel,
         color = TextTertiary,
-        modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 22.dp, bottom = 6.dp),
+        modifier = Modifier.padding(
+            start = Dimens.RowPadding,
+            end = Dimens.RowPadding,
+            top = Dimens.SpaceLg,
+            bottom = Dimens.SpaceXs,
+        ),
     )
 }
 
@@ -212,13 +211,12 @@ private fun SectionLabel(text: String) {
 private fun ActionRow(text: String, onClick: () -> Unit) {
     Text(
         text = text,
-        fontFamily = JetBrainsMono,
-        fontSize = 18.sp,
+        style = AppTextStyles.ListRow,
         color = TextPrimary,
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(horizontal = 28.dp, vertical = 16.dp),
+            .padding(horizontal = Dimens.RowPadding, vertical = Dimens.SpaceMd),
     )
 }
 
@@ -228,13 +226,12 @@ private fun ToggleRow(text: String, checked: Boolean, onChange: (Boolean) -> Uni
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onChange(!checked) }
-            .padding(horizontal = 28.dp, vertical = 10.dp),
+            .padding(horizontal = Dimens.RowPadding, vertical = Dimens.SpaceSm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = text,
-            fontFamily = JetBrainsMono,
-            fontSize = 18.sp,
+            style = AppTextStyles.ListRow,
             color = TextPrimary,
             modifier = Modifier.weight(1f),
         )
