@@ -128,6 +128,93 @@ class LauncherViewModelTest {
         assertEquals(2, vm.allApps.value.size)
     }
 
+    // ── STAB-5: failed actions are visible, not silent ──────────────────────
+
+    @Test
+    fun `a successful action reports no failure`() = runTest(dispatcher) {
+        val gateway = FakeLauncherGateway()
+        val vm = viewModel(gateway = gateway)
+        advanceUntilIdle()
+
+        vm.launchApp(app("Chrome"))
+        vm.openClock()
+
+        assertNull(vm.actionFailure.value)
+    }
+
+    @Test
+    fun `a failed launch surfaces the app it could not open`() = runTest(dispatcher) {
+        val gateway = FakeLauncherGateway().apply { failEverything = true }
+        val vm = viewModel(gateway = gateway)
+        advanceUntilIdle()
+
+        vm.launchApp(app("Chrome", packageName = "com.example.chrome"))
+
+        val failure = vm.actionFailure.value
+        assertNotNull(failure)
+        assertEquals(LauncherAction.OpenApp, failure!!.action)
+        assertEquals("Chrome", failure.subject)
+    }
+
+    @Test
+    fun `each failed action is reported with its own action type`() = runTest(dispatcher) {
+        val gateway = FakeLauncherGateway().apply { failEverything = true }
+        val vm = viewModel(gateway = gateway)
+        advanceUntilIdle()
+
+        val cases = listOf<Pair<() -> Unit, LauncherAction>>(
+            ({ vm.openAppInfo("pkg") } to LauncherAction.OpenAppInfo),
+            ({ vm.uninstall("pkg") } to LauncherAction.Uninstall),
+            ({ vm.openHomeSettings() } to LauncherAction.OpenHomeSettings),
+            ({ vm.openClock() } to LauncherAction.OpenClock),
+            ({ vm.openCalendar() } to LauncherAction.OpenCalendar),
+        )
+
+        for ((trigger, expected) in cases) {
+            vm.dismissActionFailure()
+            trigger()
+            assertEquals(expected, vm.actionFailure.value?.action)
+        }
+    }
+
+    @Test
+    fun `dismissing a failure clears it`() = runTest(dispatcher) {
+        val gateway = FakeLauncherGateway().apply { failEverything = true }
+        val vm = viewModel(gateway = gateway)
+        advanceUntilIdle()
+        vm.openClock()
+        assertNotNull(vm.actionFailure.value)
+
+        vm.dismissActionFailure()
+
+        assertNull(vm.actionFailure.value)
+    }
+
+    @Test
+    fun `every action maps to its own message resource`() {
+        val ids = LauncherAction.entries.map { action ->
+            ActionFailure(action, IllegalStateException()).messageResId()
+        }
+
+        assertEquals(
+            "each action needs a distinct message or the user cannot tell what failed",
+            LauncherAction.entries.size,
+            ids.toSet().size,
+        )
+    }
+
+    @Test
+    fun `an auto-launch failure is surfaced too`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val gateway = FakeLauncherGateway().apply { failEverything = true }
+        val vm = viewModel(appRepo = repo, gateway = gateway)
+        advanceUntilIdle()
+
+        typeAndWait(vm, "chr")
+
+        assertEquals(LauncherAction.OpenApp, vm.actionFailure.value?.action)
+    }
+
     // ── ARCH-3: all outgoing actions go through the gateway ─────────────────
 
     @Test

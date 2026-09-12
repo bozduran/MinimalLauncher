@@ -2,6 +2,7 @@ package com.example.minimallauncher.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
@@ -23,6 +24,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import com.example.minimallauncher.ui.theme.Bg
 import com.example.minimallauncher.ui.theme.MinimalLauncherTheme
@@ -75,8 +77,24 @@ private fun LauncherRoot(vm: LauncherViewModel) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
     val pagerState = rememberPagerState(pageCount = { 2 })
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     val focusManager = LocalFocusManager.current
+
+    // Tell the user when an outgoing action could not be performed. A launcher has
+    // no snackbar surface, so a toast is the least intrusive option; the decision of
+    // *what* failed is in the ViewModel (STAB-5).
+    LaunchedEffect(vm) {
+        vm.actionFailure.collect { failure ->
+            if (failure != null) {
+                val message = failure.subject
+                    ?.let { context.getString(failure.messageResId(), it) }
+                    ?: context.getString(failure.messageResId())
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                vm.dismissActionFailure()
+            }
+        }
+    }
 
     // Home button -> back to page 0 and close settings.
     LaunchedEffect(Unit) {

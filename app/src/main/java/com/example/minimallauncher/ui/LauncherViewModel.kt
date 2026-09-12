@@ -80,6 +80,9 @@ class LauncherViewModel(
     private val _settingsError = MutableStateFlow<Throwable?>(null)
     val settingsError: StateFlow<Throwable?> = _settingsError.asStateFlow()
 
+    /** Last failed outgoing action (STAB-5). */
+    private val _actionFailure = MutableStateFlow<ActionFailure?>(null)
+
     /** Why an app-list reload was requested; only [ReloadReason.Initial] skips the debounce. */
     private enum class ReloadReason { Initial, Change, Manual }
 
@@ -277,28 +280,44 @@ class LauncherViewModel(
         launchApp(top)
     }
 
-    // ── outgoing actions (ARCH-3) ───────────────────────────────────────────
+    // ── outgoing actions (ARCH-3 / STAB-5) ──────────────────────────────────
 
-    fun launchApp(app: AppInfo) = dispatch("open-app") { gateway.launch(app) }
+    fun launchApp(app: AppInfo) = dispatch(LauncherAction.OpenApp, app.label) { gateway.launch(app) }
 
-    fun openAppInfo(packageName: String) = dispatch("app-info") { gateway.openAppInfo(packageName) }
+    fun openAppInfo(packageName: String) =
+        dispatch(LauncherAction.OpenAppInfo, packageName) { gateway.openAppInfo(packageName) }
 
-    fun uninstall(packageName: String) = dispatch("uninstall") { gateway.uninstall(packageName) }
+    fun uninstall(packageName: String) =
+        dispatch(LauncherAction.Uninstall, packageName) { gateway.uninstall(packageName) }
 
-    fun openHomeSettings() = dispatch("home-settings") { gateway.openHomeSettings() }
+    fun openHomeSettings() =
+        dispatch(LauncherAction.OpenHomeSettings) { gateway.openHomeSettings() }
 
-    fun openClock() = dispatch("clock") { gateway.openClock() }
+    fun openClock() = dispatch(LauncherAction.OpenClock) { gateway.openClock() }
 
-    fun openCalendar() = dispatch("calendar") { gateway.openCalendar() }
+    fun openCalendar() = dispatch(LauncherAction.OpenCalendar) { gateway.openCalendar() }
+
+    /** The last outgoing action that could not be performed, or null. */
+    val actionFailure: StateFlow<ActionFailure?> = _actionFailure.asStateFlow()
+
+    /** Clears the failure once the user has seen it. */
+    fun dismissActionFailure() {
+        _actionFailure.value = null
+    }
 
     /**
-     * Runs a gateway action and records a failure instead of dropping it.
-     *
-     * The gateway never throws, so a dead intent used to be indistinguishable from
-     * a successful one. Surfacing it to the user is STAB-5.
+     * Runs a gateway action, recording and surfacing a failure instead of dropping
+     * it: a dead intent used to make a menu tap do nothing at all.
      */
-    private fun dispatch(reason: String, block: () -> Result<Unit>) {
-        block().onFailure { error -> logger.record(TAG_GATEWAY, error, "launcher action failed: $reason") }
+    private fun dispatch(
+        action: LauncherAction,
+        subject: String? = null,
+        block: () -> Result<Unit>,
+    ) {
+        block().onFailure { error ->
+            logger.record(TAG_GATEWAY, error, "launcher action failed: ${action.name}")
+            _actionFailure.value = ActionFailure(action, error, subject)
+        }
     }
 
     fun onHomePressed() {

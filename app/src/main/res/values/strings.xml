@@ -1,3 +1,15 @@
 <resources>
     <string name="app_name">Minimal</string>
+
+    <!--
+      Failure messages for outgoing actions (STAB-5).
+      Every new user-visible string goes here; the rest of the UI is still to be
+      externalised under I18N-1.
+    -->
+    <string name="error_open_app">Can\'t open %1$s</string>
+    <string name="error_app_info">No app details screen available</string>
+    <string name="error_uninstall">Can\'t uninstall this app</string>
+    <string name="error_home_settings">No home settings screen available</string>
+    <string name="error_clock">No clock app available</string>
+    <string name="error_calendar">No calendar app available</string>
 </resources>
