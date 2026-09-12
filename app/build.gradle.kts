@@ -11,11 +11,24 @@ android {
     compileSdk = 35
 
     defaultConfig {
+        // NOTE (PERF-6): this identifier is NOT publishable — `com.example.*` is
+        // reserved by Google Play. Changing it is a product decision, not a
+        // mechanical one: it makes the app a different app to the platform, so
+        // existing installs are a fresh install and their DataStore settings are not
+        // migrated. Pick an id on a domain you control, then decide whether the
+        // migration is acceptable (see README "Releasing").
+        //
+        // `namespace` may stay as it is: it only names the generated R/BuildConfig
+        // classes, so it does not have to follow the application id.
         applicationId = "com.example.minimallauncher"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+
+        // Version scheme: versionCode = major * 10_000 + minor * 100 + patch.
+        // BuildVersionTest asserts these two stay consistent, so bumping one without
+        // the other fails the test suite rather than shipping a bad update.
+        versionCode = 10_000
+        versionName = "1.0.0"
     }
 
     signingConfigs {
@@ -62,6 +75,9 @@ android {
     }
     buildFeatures {
         compose = true
+        // Exposes VERSION_CODE / VERSION_NAME to the unit tests, which assert the
+        // declared values match the documented scheme.
+        buildConfig = true
     }
     lint {
         // Fail on errors, and promote the checks this backlog is actively fixing so

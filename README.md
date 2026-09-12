@@ -118,6 +118,31 @@ broadcast delivery and backup/restore need a device and are tracked in
   composable accessors that read the currently selected theme, so screens never
   reference a fixed colour.
 
+## Releasing
+
+**Version scheme.** `versionCode = major * 10_000 + minor * 100 + patch`, so
+`1.2.3` is `10203`. Bump `versionCode` and `versionName` **together**:
+`BuildVersionTest` asserts they agree, so a mismatch fails the test suite instead of
+being discovered when Play rejects the upload. `minor` and `patch` must stay below
+100 for the encoding to be unambiguous (the test enforces that too).
+
+**Release builds** enable R8 and resource shrinking (~10.8 MB debug → ~1.7 MB
+release) and read signing credentials from `keystore.properties` (gitignored).
+Without that file the release build still runs so R8 can be verified, but produces
+an unsigned artifact.
+
+**Before distributing, the `applicationId` must change.** It is currently
+`com.example.minimallauncher`, and `com.example.*` is reserved by Google Play. This
+is deliberately left as a decision rather than guessed at:
+
+- choose an id on a domain you control (e.g. `dev.yourdomain.minimallauncher`);
+- it makes the app a *different* app to the platform, so existing installs become a
+  fresh install and their DataStore settings (favourites, hidden apps, theme) are
+  **not** migrated automatically. Either accept that, or add an explicit migration
+  before releasing under the new id;
+- `namespace` can stay as it is — it only names the generated `R`/`BuildConfig`
+  classes, so it does not have to follow the application id.
+
 ## Possible next steps
 - Drag-to-reorder favourites (currently shown in the order added).
 - Per-app rename / alias.
