@@ -29,6 +29,10 @@ android {
         // the other fails the test suite rather than shipping a bad update.
         versionCode = 10_000
         versionName = "1.0.0"
+
+        // Required for any instrumented test to run at all; it was never declared,
+        // so `connectedDebugAndroidTest` had nothing to execute.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -113,4 +117,13 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.datastore.preferences.core)
+
+    // QA-3: instrumented Compose UI tests. These need a device or emulator:
+    //   ./gradlew connectedDebugAndroidTest
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.rules)
+    debugImplementation(libs.androidx.ui.test.manifest)
 }
