@@ -115,6 +115,129 @@ class LauncherViewModelTest {
         assertEquals(2, vm.allApps.value.size)
     }
 
+    // ── STAB-3: single-flight, conflated reloads ────────────────────────────
+
+    @Test
+    fun `the initial load is not delayed by the package-event debounce`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome")))
+        val vm = viewModel(appRepo = repo)
+
+        testScheduler.runCurrent()
+
+        assertEquals("first load must start immediately", 1, repo.loadCount)
+        assertEquals(listOf("Chrome"), vm.allApps.value.map { it.label })
+    }
+
+    @Test
+    fun `a burst of package events collapses into a single reload`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome")))
+        val changes = FakeAppChangeSource()
+        viewModel(appRepo = repo, changeSource = changes)
+        advanceUntilIdle()
+        assertEquals(1, repo.loadCount)
+
+        repeat(8) { changes.emitChange() }
+        advanceUntilIdle()
+
+        assertEquals("burst must be conflated, not one query per event", 2, repo.loadCount)
+    }
+
+    @Test
+    fun `rapid manual refreshes collapse into a single reload`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome")))
+        val vm = viewModel(appRepo = repo)
+        advanceUntilIdle()
+        assertEquals(1, repo.loadCount)
+
+        repeat(5) { vm.refresh() }
+        advanceUntilIdle()
+
+        assertEquals(2, repo.loadCount)
+    }
+
+    @Test
+    fun `a slow earlier load can never overwrite a faster later one`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Stale")))
+        val vm = viewModel(appRepo = repo)
+        advanceUntilIdle()
+        assertEquals(listOf("Stale"), vm.allApps.value.map { it.label })
+
+        // Load A starts after its debounce and blocks on the gate.
+        val gateA = repo.gateNextLoad()
+        repo.apps = listOf(app("Old"))
+        vm.refresh()
+        testScheduler.advanceTimeBy(300)
+        testScheduler.runCurrent()
+        assertEquals(2, repo.loadCount)
+
+        // Load B arrives, supersedes A, snapshots newer data and completes first.
+        repo.apps = listOf(app("Fresh"))
+        vm.refresh()
+        testScheduler.advanceTimeBy(300)
+        testScheduler.runCurrent()
+        assertEquals(3, repo.loadCount)
+
+        // Releasing the superseded load afterwards must not clobber the new state.
+        gateA.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(
+            "the superseded load must not publish over the newer one",
+            listOf("Fresh"),
+            vm.allApps.value.map { it.label },
+        )
+    }
+
+    @Test
+    fun `a superseded load is not reported as a failure`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Stale")))
+        val logger = RecordingAppLogger()
+        val vm = viewModel(appRepo = repo, logger = logger)
+        advanceUntilIdle()
+
+        val gate = repo.gateNextLoad()
+        vm.refresh()
+        testScheduler.advanceTimeBy(300)
+        testScheduler.runCurrent()
+
+        repo.apps = listOf(app("Fresh"))
+        vm.refresh() // supersedes the gated load
+        testScheduler.advanceTimeBy(300)
+        testScheduler.runCurrent()
+
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertNull("cancellation is not a failure", vm.appListError.value)
+        assertTrue(logger.records.isEmpty())
+        assertEquals(listOf("Fresh"), vm.allApps.value.map { it.label })
+    }
+
+    @Test
+    fun `a reload while one is in flight replaces it rather than running two`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome")))
+        val vm = viewModel(appRepo = repo)
+        advanceUntilIdle()
+
+        val gate = repo.gateNextLoad()
+        vm.refresh()
+        testScheduler.advanceTimeBy(300)
+        testScheduler.runCurrent()
+        assertEquals(2, repo.loadCount)
+
+        vm.refresh() // supersedes the in-flight load
+        testScheduler.advanceTimeBy(100)
+        testScheduler.runCurrent()
+        assertEquals("no second concurrent load while debouncing", 2, repo.loadCount)
+
+        testScheduler.advanceTimeBy(300)
+        testScheduler.runCurrent()
+        assertEquals("exactly one replacement load", 3, repo.loadCount)
+
+        gate.complete(Unit)
+        advanceUntilIdle()
+    }
+
     // ── STAB-1: load failures must not crash and must be surfaced ───────────
 
     @Test

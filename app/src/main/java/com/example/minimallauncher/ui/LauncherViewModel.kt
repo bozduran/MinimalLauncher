@@ -10,13 +10,17 @@ import com.example.minimallauncher.data.LogcatAppLogger
 import com.example.minimallauncher.data.SettingsRepository
 import com.example.minimallauncher.data.TextNormalizer
 import com.example.minimallauncher.ui.theme.DEFAULT_THEME_KEY
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -58,6 +62,19 @@ class LauncherViewModel(
     private val _settingsError = MutableStateFlow<Throwable?>(null)
     val settingsError: StateFlow<Throwable?> = _settingsError.asStateFlow()
 
+    /** Why an app-list reload was requested; only [ReloadReason.Initial] skips the debounce. */
+    private enum class ReloadReason { Initial, Change, Manual }
+
+    /**
+     * Conflated reload channel (`replay = 1` so the initial request survives until
+     * the collector starts). A burst of requests keeps only the newest.
+     */
+    private val reloadRequests = MutableSharedFlow<ReloadReason>(
+        replay = 1,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
     val query = MutableStateFlow("")
 
     // Emits when the user presses Home so the UI scrolls back to page 0.
@@ -98,11 +115,22 @@ class LauncherViewModel(
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     init {
-        refresh()
-
-        // Registration lifetime follows collection (see PackageChangeSource).
+        // Single load pipeline. `collectLatest` cancels the in-flight load when a
+        // newer request arrives, which is what guarantees a slow earlier load can
+        // never publish over a faster later one (the stale-list bug), and makes a
+        // burst of package broadcasts collapse into one enumeration.
         viewModelScope.launch {
-            appChangeSource.changes.collect { refresh() }
+            reloadRequests.collectLatest { reason ->
+                // The first load must not wait; everything else is debounced so a
+                // Play Store "update all" does not trigger one query per event.
+                if (reason != ReloadReason.Initial) delay(PACKAGE_EVENT_DEBOUNCE_MS)
+                loadAppsOnce()
+            }
+        }
+        reloadRequests.tryEmit(ReloadReason.Initial)
+
+        viewModelScope.launch {
+            appChangeSource.changes.collect { reloadRequests.tryEmit(ReloadReason.Change) }
         }
 
         // Surface a settings store that cannot be read, instead of presenting
@@ -114,17 +142,28 @@ class LauncherViewModel(
         }
     }
 
+    /**
+     * Requests a reload of the app list.
+     *
+     * Safe to call as often as needed: requests are conflated and supersede any
+     * load still in flight.
+     */
     fun refresh() {
-        viewModelScope.launch {
-            try {
-                val apps = withContext(ioDispatcher) { appRepo.loadApps() }
-                allAppsFlow.value = apps
-                _appListError.value = null
-            } catch (error: Exception) {
-                // Keep the last known good list on screen and report the failure.
-                logger.record(TAG_APP_LIST, error, "app list load failed")
-                _appListError.value = error
-            }
+        reloadRequests.tryEmit(ReloadReason.Manual)
+    }
+
+    private suspend fun loadAppsOnce() {
+        try {
+            val apps = withContext(ioDispatcher) { appRepo.loadApps() }
+            allAppsFlow.value = apps
+            _appListError.value = null
+        } catch (cancelled: CancellationException) {
+            // Superseded by a newer request — not a failure.
+            throw cancelled
+        } catch (error: Exception) {
+            // Keep the last known good list on screen and report the failure.
+            logger.record(TAG_APP_LIST, error, "app list load failed")
+            _appListError.value = error
         }
     }
 
@@ -176,5 +215,8 @@ class LauncherViewModel(
     private companion object {
         const val TAG_APP_LIST = "app-list-load"
         const val TAG_SETTINGS = "settings-write"
+
+        /** Collapses a burst of package-change broadcasts into one enumeration. */
+        const val PACKAGE_EVENT_DEBOUNCE_MS = 250L
     }
 }
