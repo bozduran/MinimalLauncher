@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Data extraction rules (API 31+).
+
+  The launcher's only persisted state is a Preferences DataStore at
+  files/datastore/launcher_settings.preferences_pb — the "file" domain, not
+  "sharedpref". An <include> list is exclusive, so listing the wrong domain meant
+  nothing was backed up.
+
+  <device-transfer> is declared explicitly so device-to-device migration is a
+  decision rather than an inherited default.
+-->
 <data-extraction-rules>
     <cloud-backup>
-        <include domain="sharedpref" path="." />
+        <include domain="file" path="datastore/" />
     </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="datastore/" />
+    </device-transfer>
 </data-extraction-rules>
