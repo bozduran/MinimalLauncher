@@ -3,6 +3,7 @@ package com.example.minimallauncher.ui
 import com.example.minimallauncher.testutil.FakeAppChangeSource
 import com.example.minimallauncher.testutil.FakeAppRepository
 import com.example.minimallauncher.testutil.FakeSettingsRepository
+import com.example.minimallauncher.testutil.RecordingAppLogger
 import com.example.minimallauncher.testutil.app
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -15,6 +16,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -45,7 +48,8 @@ class LauncherViewModelTest {
         settingsRepo: FakeSettingsRepository = FakeSettingsRepository(),
         changeSource: FakeAppChangeSource = FakeAppChangeSource(),
         ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = dispatcher,
-    ) = LauncherViewModel(appRepo, settingsRepo, changeSource, ioDispatcher)
+        logger: com.example.minimallauncher.data.AppLogger = RecordingAppLogger(),
+    ) = LauncherViewModel(appRepo, settingsRepo, changeSource, ioDispatcher, logger)
 
     // ── loading ─────────────────────────────────────────────────────────────
 
@@ -109,6 +113,94 @@ class LauncherViewModelTest {
         advanceUntilIdle()
 
         assertEquals(2, vm.allApps.value.size)
+    }
+
+    // ── STAB-1: load failures must not crash and must be surfaced ───────────
+
+    @Test
+    fun `a failing app-list load does not crash the launcher`() = runTest(dispatcher) {
+        val repo = FakeAppRepository().apply { failure = RuntimeException("PackageManager failed") }
+        val vm = viewModel(appRepo = repo)
+
+        advanceUntilIdle()
+
+        assertNotNull("load failure must be surfaced to the UI", vm.appListError.value)
+    }
+
+    @Test
+    fun `a failed refresh keeps the last known good app list`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome")))
+        val vm = viewModel(appRepo = repo)
+        advanceUntilIdle()
+        assertEquals(1, vm.allApps.value.size)
+
+        repo.failure = RuntimeException("PackageManager failed")
+        vm.refresh()
+        advanceUntilIdle()
+
+        assertEquals(
+            "the previously loaded list must survive a failed refresh",
+            listOf("Chrome"),
+            vm.allApps.value.map { it.label },
+        )
+    }
+
+    @Test
+    fun `retry after a failure clears the error and loads the new list`() = runTest(dispatcher) {
+        val repo = FakeAppRepository().apply { failure = RuntimeException("PackageManager failed") }
+        val vm = viewModel(appRepo = repo)
+        advanceUntilIdle()
+        assertNotNull(vm.appListError.value)
+
+        repo.failure = null
+        repo.apps = listOf(app("Chrome"), app("Maps"))
+        vm.retryLoad()
+        advanceUntilIdle()
+
+        assertNull(vm.appListError.value)
+        assertEquals(listOf("Chrome", "Maps"), vm.allApps.value.map { it.label })
+    }
+
+    @Test
+    fun `a successful load clears a previously surfaced error`() = runTest(dispatcher) {
+        val repo = FakeAppRepository().apply { failure = RuntimeException("boom") }
+        val vm = viewModel(appRepo = repo)
+        advanceUntilIdle()
+        assertNotNull(vm.appListError.value)
+
+        repo.failure = null
+        repo.apps = listOf(app("Chrome"))
+        vm.refresh()
+        advanceUntilIdle()
+
+        assertNull(vm.appListError.value)
+    }
+
+    @Test
+    fun `load failures are recorded through the logger seam`() = runTest(dispatcher) {
+        val logger = RecordingAppLogger()
+        val repo = FakeAppRepository().apply { failure = IllegalStateException("boom") }
+        viewModel(appRepo = repo, logger = logger)
+
+        advanceUntilIdle()
+
+        assertEquals(1, logger.records.size)
+        assertTrue(logger.records.single().throwable is IllegalStateException)
+    }
+
+    @Test
+    fun `a package change event that fails to load does not crash`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome")))
+        val changes = FakeAppChangeSource()
+        val vm = viewModel(appRepo = repo, changeSource = changes)
+        advanceUntilIdle()
+
+        repo.failure = RuntimeException("boom")
+        changes.emitChange()
+        advanceUntilIdle()
+
+        assertNotNull(vm.appListError.value)
+        assertEquals(listOf("Chrome"), vm.allApps.value.map { it.label })
     }
 
     // ── favorites ───────────────────────────────────────────────────────────

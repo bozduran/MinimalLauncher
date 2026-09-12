@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.minimallauncher.data.AppChangeSource
 import com.example.minimallauncher.data.AppInfo
+import com.example.minimallauncher.data.AppLogger
 import com.example.minimallauncher.data.AppRepository
+import com.example.minimallauncher.data.LogcatAppLogger
 import com.example.minimallauncher.data.SettingsRepository
 import com.example.minimallauncher.data.TextNormalizer
 import com.example.minimallauncher.ui.theme.DEFAULT_THEME_KEY
@@ -33,10 +35,21 @@ class LauncherViewModel(
     private val settingsRepo: SettingsRepository,
     appChangeSource: AppChangeSource,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val logger: AppLogger = LogcatAppLogger(),
 ) : ViewModel() {
 
     private val allAppsFlow = MutableStateFlow<List<AppInfo>>(emptyList())
     val allApps: StateFlow<List<AppInfo>> = allAppsFlow.asStateFlow()
+
+    /**
+     * Last app-list load failure, or null when the list is current.
+     *
+     * Surfaced instead of thrown: an uncaught exception inside `viewModelScope`
+     * (which only has a `SupervisorJob`, not an exception handler) would kill the
+     * process, and this app *is* the device's home screen.
+     */
+    private val _appListError = MutableStateFlow<Throwable?>(null)
+    val appListError: StateFlow<Throwable?> = _appListError.asStateFlow()
 
     val query = MutableStateFlow("")
 
@@ -88,10 +101,25 @@ class LauncherViewModel(
 
     fun refresh() {
         viewModelScope.launch {
-            val apps = withContext(ioDispatcher) { appRepo.loadApps() }
-            allAppsFlow.value = apps
+            try {
+                val apps = withContext(ioDispatcher) { appRepo.loadApps() }
+                allAppsFlow.value = apps
+                _appListError.value = null
+            } catch (error: Exception) {
+                // Keep the last known good list on screen and report the failure.
+                logger.record(TAG_APP_LIST, error, "app list load failed")
+                _appListError.value = error
+            }
         }
     }
+
+    /** Clears the app-list error without retrying. */
+    fun dismissAppListError() {
+        _appListError.value = null
+    }
+
+    /** Retries the app list load after a failure. */
+    fun retryLoad() = refresh()
 
     fun setQuery(q: String) {
         query.value = q
@@ -106,4 +134,8 @@ class LauncherViewModel(
     fun toggleHidden(pkg: String) = viewModelScope.launch { settingsRepo.toggleHidden(pkg) }
     fun setUse24h(v: Boolean) = viewModelScope.launch { settingsRepo.setUse24h(v) }
     fun setTheme(key: String) = viewModelScope.launch { settingsRepo.setTheme(key) }
+
+    private companion object {
+        const val TAG_APP_LIST = "app-list-load"
+    }
 }

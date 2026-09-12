@@ -2,6 +2,7 @@ package com.example.minimallauncher.testutil
 
 import com.example.minimallauncher.data.AppChangeSource
 import com.example.minimallauncher.data.AppInfo
+import com.example.minimallauncher.data.AppLogger
 import com.example.minimallauncher.data.AppRepository
 import com.example.minimallauncher.data.SettingsRepository
 import com.example.minimallauncher.ui.theme.DEFAULT_THEME_KEY
@@ -135,4 +136,18 @@ class FakeAppChangeSource : AppChangeSource {
     fun emitChange() {
         check(events.tryEmit(Unit)) { "change event dropped" }
     }
+}
+
+/** [AppLogger] that keeps every record so tests can assert on failure reporting. */
+class RecordingAppLogger : AppLogger {
+
+    data class Record(val tag: String, val throwable: Throwable?, val message: String?)
+
+    val records = mutableListOf<Record>()
+
+    override fun record(tag: String, throwable: Throwable?, message: String?) {
+        records += Record(tag, throwable, message)
+    }
+
+    fun recordsFor(tag: String): List<Record> = records.filter { it.tag == tag }
 }
