@@ -24,6 +24,13 @@ interface SettingsRepository {
     /** Selected theme key; falls back to [com.example.minimallauncher.ui.theme.DEFAULT_THEME_KEY]. */
     val themeKey: Flow<String>
 
+    /**
+     * Non-null while the stored settings cannot be read and defaults are being
+     * used. Sticky: it stays set until the store becomes readable again, so the UI
+     * can warn the user rather than silently presenting defaults as their config.
+     */
+    val readError: Flow<Throwable?>
+
     /** Adds the package to favorites if absent, removes it if present. */
     suspend fun toggleFavorite(pkg: String)
 

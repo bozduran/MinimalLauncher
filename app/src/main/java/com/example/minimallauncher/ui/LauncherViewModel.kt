@@ -51,6 +51,13 @@ class LauncherViewModel(
     private val _appListError = MutableStateFlow<Throwable?>(null)
     val appListError: StateFlow<Throwable?> = _appListError.asStateFlow()
 
+    /**
+     * Non-null while stored settings could not be read (defaults are in use) or a
+     * settings write failed. Dismissible by the user.
+     */
+    private val _settingsError = MutableStateFlow<Throwable?>(null)
+    val settingsError: StateFlow<Throwable?> = _settingsError.asStateFlow()
+
     val query = MutableStateFlow("")
 
     // Emits when the user presses Home so the UI scrolls back to page 0.
@@ -97,6 +104,14 @@ class LauncherViewModel(
         viewModelScope.launch {
             appChangeSource.changes.collect { refresh() }
         }
+
+        // Surface a settings store that cannot be read, instead of presenting
+        // defaults as if they were the user's configuration.
+        viewModelScope.launch {
+            settingsRepo.readError.collect { error ->
+                if (error != null) _settingsError.value = error
+            }
+        }
     }
 
     fun refresh() {
@@ -121,6 +136,11 @@ class LauncherViewModel(
     /** Retries the app list load after a failure. */
     fun retryLoad() = refresh()
 
+    /** Clears the settings warning. */
+    fun dismissSettingsError() {
+        _settingsError.value = null
+    }
+
     fun setQuery(q: String) {
         query.value = q
     }
@@ -130,12 +150,31 @@ class LauncherViewModel(
         _goHome.tryEmit(Unit)
     }
 
-    fun toggleFavorite(pkg: String) = viewModelScope.launch { settingsRepo.toggleFavorite(pkg) }
-    fun toggleHidden(pkg: String) = viewModelScope.launch { settingsRepo.toggleHidden(pkg) }
-    fun setUse24h(v: Boolean) = viewModelScope.launch { settingsRepo.setUse24h(v) }
-    fun setTheme(key: String) = viewModelScope.launch { settingsRepo.setTheme(key) }
+    fun toggleFavorite(pkg: String) = settingsWrite { settingsRepo.toggleFavorite(pkg) }
+    fun toggleHidden(pkg: String) = settingsWrite { settingsRepo.toggleHidden(pkg) }
+    fun setUse24h(v: Boolean) = settingsWrite { settingsRepo.setUse24h(v) }
+    fun setTheme(key: String) = settingsWrite { settingsRepo.setTheme(key) }
+
+    /**
+     * Runs a settings mutation, turning a storage failure into user-visible state
+     * instead of an uncaught exception. Because the persisted flows are the single
+     * source of truth there is no optimistic copy to roll back: a failed write
+     * simply never appears, and the observable state still shows the last value
+     * that was actually stored.
+     */
+    private fun settingsWrite(action: suspend () -> Unit) {
+        viewModelScope.launch {
+            try {
+                action()
+            } catch (error: Exception) {
+                logger.record(TAG_SETTINGS, error, "settings write failed")
+                _settingsError.value = error
+            }
+        }
+    }
 
     private companion object {
         const val TAG_APP_LIST = "app-list-load"
+        const val TAG_SETTINGS = "settings-write"
     }
 }

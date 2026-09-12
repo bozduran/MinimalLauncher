@@ -363,6 +363,88 @@ class LauncherViewModelTest {
         job.cancel()
     }
 
+    // ── STAB-2: settings storage must degrade, not crash or lie ─────────────
+
+    @Test
+    fun `a failed favorite write does not crash the launcher`() = runTest(dispatcher) {
+        val settings = FakeSettingsRepository().apply { writeFailure = java.io.IOException("disk full") }
+        val vm = viewModel(settingsRepo = settings)
+        advanceUntilIdle()
+
+        vm.toggleFavorite("com.example.chrome")
+        advanceUntilIdle()
+
+        assertNotNull("write failure must be surfaced", vm.settingsError.value)
+    }
+
+    @Test
+    fun `a failed favorite write leaves the stored value unchanged`() = runTest(dispatcher) {
+        val settings = FakeSettingsRepository().apply { setFavorites("existing") }
+        val vm = viewModel(settingsRepo = settings)
+        advanceUntilIdle()
+
+        settings.writeFailure = java.io.IOException("disk full")
+        vm.toggleFavorite("com.example.chrome")
+        advanceUntilIdle()
+
+        assertEquals(
+            "state must still show what was actually persisted",
+            listOf("existing"),
+            settings.currentFavorites,
+        )
+        assertEquals(setOf("existing"), vm.favoriteSet.value)
+    }
+
+    @Test
+    fun `a failed theme write is logged through the seam`() = runTest(dispatcher) {
+        val logger = RecordingAppLogger()
+        val settings = FakeSettingsRepository().apply { writeFailure = java.io.IOException("disk full") }
+        val vm = viewModel(settingsRepo = settings, logger = logger)
+        advanceUntilIdle()
+
+        vm.setTheme("dracula")
+        advanceUntilIdle()
+
+        assertEquals(1, logger.recordsFor("settings-write").size)
+        assertTrue(logger.recordsFor("settings-write").single().throwable is java.io.IOException)
+    }
+
+    @Test
+    fun `a settings read error is surfaced to the user`() = runTest(dispatcher) {
+        val settings = FakeSettingsRepository().apply { failReads(java.io.IOException("corrupt")) }
+        val vm = viewModel(settingsRepo = settings)
+
+        advanceUntilIdle()
+
+        assertNotNull(vm.settingsError.value)
+    }
+
+    @Test
+    fun `dismissing the settings error clears the warning`() = runTest(dispatcher) {
+        val settings = FakeSettingsRepository().apply { failReads(java.io.IOException("corrupt")) }
+        val vm = viewModel(settingsRepo = settings)
+        advanceUntilIdle()
+        assertNotNull(vm.settingsError.value)
+
+        vm.dismissSettingsError()
+        advanceUntilIdle()
+
+        assertNull(vm.settingsError.value)
+    }
+
+    @Test
+    fun `a settings read failure still allows the app list to load`() = runTest(dispatcher) {
+        // The launcher's core action (enumerate + open an app) must not depend on
+        // settings storage being healthy.
+        val repo = FakeAppRepository(listOf(app("Chrome")))
+        val settings = FakeSettingsRepository().apply { failReads(java.io.IOException("corrupt")) }
+        val vm = viewModel(appRepo = repo, settingsRepo = settings)
+
+        advanceUntilIdle()
+
+        assertEquals(listOf("Chrome"), vm.drawerApps.value.map { it.label })
+    }
+
     // ── settings pass-through ───────────────────────────────────────────────
 
     @Test

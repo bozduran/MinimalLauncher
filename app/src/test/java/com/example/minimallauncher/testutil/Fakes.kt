@@ -75,6 +75,15 @@ class FakeSettingsRepository : SettingsRepository {
     /** When non-null, every write fails with it. */
     var writeFailure: Throwable? = null
 
+    private val readErrorFlow = MutableStateFlow<Throwable?>(null)
+
+    override val readError: Flow<Throwable?> = readErrorFlow
+
+    /** Emits the sticky read-error that [DataStoreSettingsRepository] would raise. */
+    fun failReads(error: Throwable) {
+        readErrorFlow.value = error
+    }
+
     private fun <T> read(source: Flow<T>): Flow<T> =
         failure?.let { error -> flow<T> { throw error } } ?: source
 
