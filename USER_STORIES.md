@@ -33,6 +33,7 @@ plus a green test run before committing. **236 unit tests, 0 failures**, lint cl
 | DRAW-1 auto-launch exactly once | ✅ done | `dbbd39d` |
 | DRAW-4 precomputed search / off-main filter | ✅ done | `2793102` |
 | PERF-2 R8 + shrinking | ⚠️ done, release smoke test outstanding | `996f73a` |
+| PERF-3 baseline profile infrastructure | ⚠️ partial — module + CI generation wired; profile not yet generated | `0f5a837`, `77ca89a` |
 | A11Y-3 palette contrast audit + themed icon | ✅ done (contrast debt recorded below) | `6330349`, `e181c3b` |
 | PLAT-4 hygiene / warning-free build / lint gate | ✅ done | `cdb5740`, `e181c3b` |
 | QA-4 CI pipeline (incl. emulator job) | ✅ done | `6dd4d34`, `b3df761` |
