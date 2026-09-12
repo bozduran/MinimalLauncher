@@ -1,15 +1,55 @@
-*.iml
-.gradle
-/local.properties
-/.idea
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# ============================================================
+# MinimalLauncher — root .gitignore
+# Module-level rules live in app/.gitignore and baselineprofile/.gitignore
+# ============================================================
+
+# ---- Android / Gradle build output ----
+.gradle/
+.kotlin/
+/build/
+/app/build/
+/baselineprofile/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+output.json
+
+# ---- Gradle wrapper / caches ----
+# Keep the wrapper itself: gradlew, gradlew.bat, gradle/wrapper/**
+gradle-app.setting
+.gradletasknamecache
+
+# ---- Local configuration (machine-specific — must NOT be committed) ----
 local.properties
-/app/build
-/baselineprofile/build
-# Container/sandbox build state (GRADLE_USER_HOME / ANDROID_USER_HOME redirection)
-/.gradle-user-home
-/.android-home
+keystore.properties
+
+# ---- Signing / secrets ----
+*.jks
+*.keystore
+
+# ---- IDE (Android Studio / IntelliJ) ----
+.idea/
+*.iml
+*.ipr
+*.iws
+.navigation/
+
+# ---- Container/sandbox build state ----
+# GRADLE_USER_HOME / ANDROID_USER_HOME redirection used by CI and sandboxes
+/.gradle-user-home/
+/.android-home/
+
+# ---- JVM crash dumps & logs ----
+*.hprof
+hs_err_pid*.log
+replay_pid*.log
+*.log
+
+# ---- OS / editor cruft ----
+.DS_Store
+Thumbs.db
