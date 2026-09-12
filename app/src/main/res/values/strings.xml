@@ -1,5 +1,6 @@
 <resources>
-    <string name="app_name">Minimal</string>
+    <!-- Brand name: never translated (translatable="false" also satisfies lint). -->
+    <string name="app_name" translatable="false">Minimal</string>
 
     <!-- Home screen -->
     <string name="home_no_favorites">no favorites yet\nlong-press anywhere to open settings</string>
@@ -10,10 +11,27 @@
         <item quantity="other">and %1$d more</item>
     </plurals>
 
+    <!-- Drawer -->
+    <string name="search_hint">search…</string>
+    <string name="menu_remove_favorite">remove from favorites</string>
+    <string name="menu_add_favorite">add to favorites</string>
+    <string name="menu_hide_app">hide app</string>
+    <string name="menu_app_info">app info</string>
+    <string name="menu_uninstall">uninstall</string>
+
+    <!-- Settings -->
+    <string name="settings_title">settings</string>
+    <string name="settings_24h">24-hour clock</string>
+    <string name="settings_set_default_launcher">set as default launcher</string>
+    <string name="settings_section_theme">theme</string>
+    <string name="settings_section_favorites">favorites — tap to toggle</string>
+    <string name="settings_unhide">unhide</string>
+
     <!--
       Failure messages for outgoing actions (STAB-5).
-      Every new user-visible string goes here; the rest of the UI is still to be
-      externalised under I18N-1.
+      NOTE: glyph-only strings ("×", "‹", "★", "☆") stay as literals in code: they
+      are symbols, not language, so they must not be translated. Theme names in
+      ui/theme/Color.kt are likewise deliberately untranslated product names.
     -->
     <string name="error_open_app">Can\'t open %1$s</string>
     <string name="error_app_info">No app details screen available</string>

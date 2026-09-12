@@ -17,12 +17,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
+import com.example.minimallauncher.R
 import com.example.minimallauncher.ui.theme.Accent
 import com.example.minimallauncher.ui.theme.JetBrainsMono
 import com.example.minimallauncher.ui.theme.TextPrimary
@@ -65,7 +67,7 @@ fun SearchField(
             )
             if (query.isEmpty()) {
                 Text(
-                    text = "search…",
+                    text = stringResource(R.string.search_hint),
                     fontFamily = JetBrainsMono,
                     fontSize = 20.sp,
                     color = TextTertiary,

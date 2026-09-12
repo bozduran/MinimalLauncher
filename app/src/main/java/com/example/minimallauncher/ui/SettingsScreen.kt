@@ -31,10 +31,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.minimallauncher.R
 import com.example.minimallauncher.ui.theme.Accent
 import com.example.minimallauncher.ui.theme.AccentRing
 import com.example.minimallauncher.ui.theme.AppThemes
@@ -75,7 +77,7 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
             )
             Spacer(Modifier.width(18.dp))
             Text(
-                text = "settings",
+                text = stringResource(R.string.settings_title),
                 fontFamily = JetBrainsMono,
                 fontWeight = FontWeight.Medium,
                 fontSize = 22.sp,
@@ -86,15 +88,15 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
 
         LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
             item {
-                ToggleRow("24-hour clock", use24h) { vm.setUse24h(it) }
-                ActionRow("set as default launcher") { vm.openHomeSettings() }
-                SectionLabel("theme")
+                ToggleRow(stringResource(R.string.settings_24h), use24h) { vm.setUse24h(it) }
+                ActionRow(stringResource(R.string.settings_set_default_launcher)) { vm.openHomeSettings() }
+                SectionLabel(stringResource(R.string.settings_section_theme))
             }
             item {
                 ThemePicker(current = themeKey, onSelect = { vm.setTheme(it) })
             }
             item {
-                SectionLabel("favorites — tap to toggle")
+                SectionLabel(stringResource(R.string.settings_section_favorites))
             }
             items(apps, key = { it.packageName }) { app ->
                 val isFav = app.packageName in favorites
@@ -122,7 +124,7 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
                     )
                     if (isHidden) {
                         Text(
-                            text = "unhide",
+                            text = stringResource(R.string.settings_unhide),
                             fontFamily = JetBrainsMono,
                             fontSize = 13.sp,
                             color = TextSecondary,

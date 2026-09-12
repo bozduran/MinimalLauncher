@@ -28,10 +28,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.example.minimallauncher.R
 import com.example.minimallauncher.data.AppInfo
 import com.example.minimallauncher.ui.theme.Accent
 import com.example.minimallauncher.ui.theme.Bg
@@ -146,10 +148,14 @@ private fun AppMenu(
                 modifier = Modifier.padding(horizontal = 22.dp, vertical = 10.dp),
             )
             HorizontalDivider(color = BorderCol, thickness = 1.dp)
-            MenuRow(if (isFavorite) "remove from favorites" else "add to favorites", onToggleFavorite)
-            MenuRow("hide app", onHide)
-            MenuRow("app info", onInfo)
-            MenuRow("uninstall", onUninstall, color = Accent)
+            MenuRow(
+                if (isFavorite) stringResource(R.string.menu_remove_favorite)
+                else stringResource(R.string.menu_add_favorite),
+                onToggleFavorite,
+            )
+            MenuRow(stringResource(R.string.menu_hide_app), onHide)
+            MenuRow(stringResource(R.string.menu_app_info), onInfo)
+            MenuRow(stringResource(R.string.menu_uninstall), onUninstall, color = Accent)
         }
     }
 }
