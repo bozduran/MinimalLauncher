@@ -9,9 +9,9 @@
 
 ## Implementation status
 
-Implemented on branch `refactor/user-stories-implementation` (28 stories complete, 3 partial — 31 of 41 touched).
+Implemented on branch `refactor/user-stories-implementation` (30 stories complete, 3 partial — 33 of 41 touched).
 Every commit below is atomic and was verified with `./gradlew assembleDebug assembleRelease testDebugUnitTest`
-plus a green test run before committing. **187 unit tests, 0 failures**, lint clean and blocking.
+plus a green test run before committing. **200 unit tests, 0 failures**, lint clean and blocking.
 
 | Story | Status | Commit |
 | --- | --- | --- |
@@ -46,9 +46,11 @@ plus a green test run before committing. **187 unit tests, 0 failures**, lint cl
 | PLAT-3 process death + lifecycle contract | ✅ done | `b6b2c9b` |
 | ARCH-6 observable failure seam | ✅ done | `a42be40` |
 | ARCH-2 single immutable UI state | ✅ done | `5fdb538` |
+| PERF-4 launch window matches the theme | ✅ done | `a2151bb` |
+| PLAT-2 predictive back + back semantics | ✅ done | `9c733d7` |
 
-**Still open (10 stories):** I18N-3, PERF-3, PERF-4, PERF-5, PERF-6, PLAT-1,
-PLAT-2, QA-3, A11Y-1, A11Y-2.
+**Still open (8 stories):** I18N-3, PERF-3, PERF-5, PERF-6, PLAT-1, QA-3,
+A11Y-1, A11Y-2.
 
 **Partial (3):** DATA-4 and PERF-2 are implemented but need on-device verification
 (`bmgr backupnow/restore`; an R8 release smoke test). QA-4's CI pipeline is live but
