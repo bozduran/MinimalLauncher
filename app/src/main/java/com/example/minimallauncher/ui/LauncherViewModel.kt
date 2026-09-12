@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -41,6 +42,7 @@ class LauncherViewModel(
     private val settingsRepo: SettingsRepository,
     appChangeSource: AppChangeSource,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val logger: AppLogger = LogcatAppLogger(),
 ) : ViewModel() {
 
@@ -150,9 +152,13 @@ class LauncherViewModel(
         combine(allAppsFlow, hiddenPkgs, query) { apps, hidden, q ->
             apps.asSequence()
                 .filter { it.packageName !in hidden }
-                .filter { TextNormalizer.matches(it.label, q) }
+                // Precomputed keys: only the query is normalised per keystroke.
+                .filter { TextNormalizer.matchesKey(it.searchKey, q) }
                 .toList()
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        }
+            // Filtering must not run on the frame-producing thread.
+            .flowOn(computationDispatcher)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     init {
         // Single load pipeline. `collectLatest` cancels the in-flight load when a

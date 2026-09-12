@@ -26,4 +26,15 @@ object TextNormalizer {
         if (query.isBlank()) return true
         return normalize(label).contains(normalize(query))
     }
+
+    /**
+     * Matches an already-[normalize]d search key against a raw query.
+     *
+     * Used by the drawer so an app's label is normalised **once per app-list
+     * load** rather than once per installed app on every keystroke.
+     */
+    fun matchesKey(searchKey: String, query: String): Boolean {
+        if (query.isBlank()) return true
+        return searchKey.contains(normalize(query))
+    }
 }

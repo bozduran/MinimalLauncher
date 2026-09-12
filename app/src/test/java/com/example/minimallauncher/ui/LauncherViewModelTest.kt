@@ -50,8 +50,16 @@ class LauncherViewModelTest {
         settingsRepo: FakeSettingsRepository = FakeSettingsRepository(),
         changeSource: FakeAppChangeSource = FakeAppChangeSource(),
         ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = dispatcher,
+        computationDispatcher: kotlinx.coroutines.CoroutineDispatcher = dispatcher,
         logger: com.example.minimallauncher.data.AppLogger = RecordingAppLogger(),
-    ) = LauncherViewModel(appRepo, settingsRepo, changeSource, ioDispatcher, logger)
+    ) = LauncherViewModel(
+        appRepo,
+        settingsRepo,
+        changeSource,
+        ioDispatcher,
+        computationDispatcher,
+        logger,
+    )
 
     // ── loading ─────────────────────────────────────────────────────────────
 
@@ -115,6 +123,58 @@ class LauncherViewModelTest {
         advanceUntilIdle()
 
         assertEquals(2, vm.allApps.value.size)
+    }
+
+    // ── DRAW-4: search filtering off the main thread ────────────────────────
+
+    @Test
+    fun `drawer filtering runs on the injected computation dispatcher`() =
+        runTest(dispatcher) {
+            // Main runs eagerly; if filtering honoured the injected dispatcher the
+            // result cannot be ready before the computation dispatcher advances.
+            val computation = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+            val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+            val vm = viewModel(appRepo = repo, computationDispatcher = computation)
+            advanceUntilIdle()
+
+            vm.setQuery("chr")
+
+            assertEquals(
+                "filtering must not run inline on the main thread",
+                listOf("Chrome", "Maps"),
+                vm.drawerApps.value.map { it.label },
+            )
+
+            testScheduler.advanceUntilIdle()
+            assertEquals(listOf("Chrome"), vm.drawerApps.value.map { it.label })
+        }
+
+    @Test
+    fun `search matching still folds accents and case after precomputing keys`() =
+        runTest(dispatcher) {
+            val repo = FakeAppRepository(listOf(app("Αθήνα"), app("Café"), app("Chrome")))
+            val vm = viewModel(appRepo = repo)
+            advanceUntilIdle()
+
+            vm.setQuery("αθηνα")
+            advanceUntilIdle()
+            assertEquals(listOf("Αθήνα"), vm.drawerApps.value.map { it.label })
+
+            vm.setQuery("cafe")
+            advanceUntilIdle()
+            assertEquals(listOf("Café"), vm.drawerApps.value.map { it.label })
+
+            vm.setQuery("CHRO")
+            advanceUntilIdle()
+            assertEquals(listOf("Chrome"), vm.drawerApps.value.map { it.label })
+        }
+
+    @Test
+    fun `an app entry precomputes a normalised search key`() {
+        val entry = app("Αθήνα")
+
+        assertEquals("αθηνα", entry.searchKey)
     }
 
     // ── STAB-7: no false empty state while loading ──────────────────────────

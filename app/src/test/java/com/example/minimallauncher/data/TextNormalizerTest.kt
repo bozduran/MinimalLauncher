@@ -137,4 +137,36 @@ class TextNormalizerTest {
         assertTrue(TextNormalizer.matches("Οδυσσεύς", "οδυσσευσ"))
         assertTrue(TextNormalizer.matches("Οδυσσεύς", "ΟΔΥΣΣΕΥΣ"))
     }
+
+    // ── matchesKey(): precomputed-key matching used by the drawer ───────────
+
+    @Test
+    fun `matchesKey agrees with matches for accent and case folding`() {
+        val labels = listOf("Αθήνα", "Café", "Chrome", "Οδυσσεύς", "7-11")
+        val queries = listOf("", "αθηνα", "ΑΘΗΝΑ", "cafe", "CAFE", "chr", "οδυσσευσ", "7", "zzz")
+
+        for (label in labels) {
+            for (query in queries) {
+                assertEquals(
+                    "mismatch for label='$label' query='$query'",
+                    TextNormalizer.matches(label, query),
+                    TextNormalizer.matchesKey(TextNormalizer.normalize(label), query),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `matchesKey treats a blank query as matching everything`() {
+        assertTrue(TextNormalizer.matchesKey("chrome", ""))
+        assertTrue(TextNormalizer.matchesKey("chrome", "   "))
+    }
+
+    @Test
+    fun `matchesKey does not re-normalise the label`() {
+        // The key is expected to be pre-normalised: passing a raw accented label
+        // would not match, which is exactly why AppInfo computes it once.
+        assertTrue(TextNormalizer.matchesKey("αθηνα", "αθηνα"))
+        assertFalse(TextNormalizer.matchesKey("Αθήνα", "αθηνα"))
+    }
 }
