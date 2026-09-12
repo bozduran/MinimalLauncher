@@ -1,6 +1,15 @@
 <resources>
     <string name="app_name">Minimal</string>
 
+    <!-- Home screen -->
+    <string name="home_no_favorites">no favorites yet\nlong-press anywhere to open settings</string>
+    <string name="home_load_failed">couldn\'t load your apps\nlong-press anywhere to open settings</string>
+    <string name="home_open_drawer">↑ apps</string>
+    <plurals name="home_more_favorites">
+        <item quantity="one">and %1$d more</item>
+        <item quantity="other">and %1$d more</item>
+    </plurals>
+
     <!--
       Failure messages for outgoing actions (STAB-5).
       Every new user-visible string goes here; the rest of the UI is still to be

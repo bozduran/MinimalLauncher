@@ -120,7 +120,11 @@ private fun LauncherRoot(vm: LauncherViewModel) {
                 .background(Bg),
         ) { page ->
             when (page) {
-                0 -> HomeScreen(vm = vm, onOpenSettings = { showSettings = true })
+                0 -> HomeScreen(
+                    vm = vm,
+                    onOpenSettings = { showSettings = true },
+                    onOpenDrawer = { scope.launch { pagerState.animateScrollToPage(1) } },
+                )
                 else -> DrawerScreen(vm = vm, active = pagerState.currentPage == 1)
             }
         }
