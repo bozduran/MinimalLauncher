@@ -59,6 +59,13 @@ plus a green test run before committing. **236 unit tests, 0 failures**, lint cl
 **Open (0 stories) — all 41 are now touched.**
 
 **Partial (8):** DATA-4, PERF-2, PERF-3, PERF-5, PERF-6, QA-3, A11Y-1, A11Y-2.
+
+**PERF-6 decision (owner, round 11):** the `applicationId` stays
+`com.example.minimallauncher` for now. It is therefore *not* publishable to Google
+Play, and that is a deliberate, recorded choice rather than an oversight. Revisit
+before any distribution; README "Releasing" states the consequence (existing installs
+become a fresh install with no settings migration) and the alternative (add a
+migration first).
 Each partial's remaining criterion is listed in the device-verification table below;
 seven of the eight need a device or emulator run, and PERF-6 needs an owner decision
 on the applicationId.
