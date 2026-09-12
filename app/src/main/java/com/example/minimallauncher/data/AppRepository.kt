@@ -11,5 +11,5 @@ package com.example.minimallauncher.data
 interface AppRepository {
 
     /** All launchable apps, excluding this launcher, sorted by label for the active locale. */
-    fun loadApps(): List<AppInfo>
+    suspend fun loadApps(): List<AppInfo>
 }

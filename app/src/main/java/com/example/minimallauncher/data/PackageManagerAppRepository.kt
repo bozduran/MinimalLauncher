@@ -14,7 +14,7 @@ import java.util.Locale
 class PackageManagerAppRepository(private val context: Context) : AppRepository {
 
     /** All launchable apps (excluding this launcher), sorted by label using a locale collator. */
-    override fun loadApps(): List<AppInfo> {
+    override suspend fun loadApps(): List<AppInfo> {
         val pm = context.packageManager
         val intent = Intent(Intent.ACTION_MAIN, null).apply {
             addCategory(Intent.CATEGORY_LAUNCHER)
