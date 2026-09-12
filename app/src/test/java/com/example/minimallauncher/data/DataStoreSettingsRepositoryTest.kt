@@ -199,6 +199,62 @@ class DataStoreSettingsRepositoryTest {
         assertNull(repo.readError.first())
     }
 
+    // ── pruning (DATA-3) ────────────────────────────────────────────────────
+
+    @Test
+    fun `pruning removes entries for packages that are no longer installed`() = runTest {
+        val repo = DataStoreSettingsRepository(
+            PreferenceDataStoreFactory.create(scope = backgroundScope) { file() },
+        )
+        repo.toggleFavorite("kept")
+        repo.toggleFavorite("gone")
+        repo.toggleHidden("hiddenGone")
+
+        repo.pruneMissing(setOf("kept"))
+
+        assertEquals(listOf("kept"), repo.favorites.first())
+        assertEquals(emptySet<String>(), repo.hidden.first())
+    }
+
+    @Test
+    fun `pruning preserves the favorite order of surviving entries`() = runTest {
+        val repo = DataStoreSettingsRepository(
+            PreferenceDataStoreFactory.create(scope = backgroundScope) { file() },
+        )
+        listOf("a", "gone", "b", "c").forEach { repo.toggleFavorite(it) }
+
+        repo.pruneMissing(setOf("a", "b", "c"))
+
+        assertEquals(listOf("a", "b", "c"), repo.favorites.first())
+    }
+
+    @Test
+    fun `pruning with everything installed changes nothing`() = runTest {
+        val repo = DataStoreSettingsRepository(
+            PreferenceDataStoreFactory.create(scope = backgroundScope) { file() },
+        )
+        repo.toggleFavorite("a")
+        repo.toggleHidden("b")
+
+        repo.pruneMissing(setOf("a", "b", "c"))
+
+        assertEquals(listOf("a"), repo.favorites.first())
+        assertEquals(setOf("b"), repo.hidden.first())
+    }
+
+    @Test
+    fun `pruning against an empty installed set is refused`() = runTest {
+        val repo = DataStoreSettingsRepository(
+            PreferenceDataStoreFactory.create(scope = backgroundScope) { file() },
+        )
+        repo.toggleFavorite("a")
+
+        val thrown = runCatching { repo.pruneMissing(emptySet()) }.exceptionOrNull()
+
+        assertTrue("an empty set would wipe the user's config", thrown is IllegalArgumentException)
+        assertEquals(listOf("a"), repo.favorites.first())
+    }
+
     // ── test doubles ────────────────────────────────────────────────────────
 
     /** A [DataStore] whose reads and writes always fail. */

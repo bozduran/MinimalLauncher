@@ -99,4 +99,25 @@ class DataStoreSettingsRepository(
     override suspend fun setTheme(key: String) {
         dataStore.edit { it[Keys.THEME] = key }
     }
+
+    override suspend fun pruneMissing(installed: Set<String>) {
+        require(installed.isNotEmpty()) {
+            "refusing to prune every stored package against an empty installed set"
+        }
+        dataStore.edit { prefs ->
+            val favorites = prefs[Keys.FAVORITES]
+                ?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()
+            val hidden = prefs[Keys.HIDDEN] ?: emptySet()
+
+            val keptFavorites = favorites.filter { it in installed }
+            val keptHidden = hidden.filterTo(mutableSetOf()) { it in installed }
+
+            if (keptFavorites.size != favorites.size) {
+                prefs[Keys.FAVORITES] = keptFavorites.joinToString("\n")
+            }
+            if (keptHidden.size != hidden.size) {
+                prefs[Keys.HIDDEN] = keptHidden
+            }
+        }
+    }
 }

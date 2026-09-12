@@ -128,6 +128,114 @@ class LauncherViewModelTest {
         assertEquals(2, vm.allApps.value.size)
     }
 
+    // ── DATA-3: prune settings for uninstalled packages ─────────────────────
+
+    @Test
+    fun `a favorite for an uninstalled package is pruned`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome")))
+        val settings = FakeSettingsRepository().apply { setFavorites("chrome", "ghost") }
+        viewModel(appRepo = repo, settingsRepo = settings)
+
+        advanceUntilIdle()
+
+        assertEquals(listOf("chrome"), settings.currentFavorites)
+    }
+
+    @Test
+    fun `a hidden entry for an uninstalled package is pruned`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val settings = FakeSettingsRepository().apply { setHidden("ghost", "maps") }
+        viewModel(appRepo = repo, settingsRepo = settings)
+
+        advanceUntilIdle()
+
+        assertEquals(setOf("maps"), settings.currentHidden)
+    }
+
+    @Test
+    fun `nothing is pruned when every stored package is installed`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val settings = FakeSettingsRepository().apply {
+            setFavorites("chrome")
+            setHidden("maps")
+        }
+        viewModel(appRepo = repo, settingsRepo = settings)
+
+        advanceUntilIdle()
+
+        assertEquals("the common path must not write to the store", 0, settings.pruneCalls)
+        assertEquals(listOf("chrome"), settings.currentFavorites)
+        assertEquals(setOf("maps"), settings.currentHidden)
+    }
+
+    @Test
+    fun `an empty app list never wipes the stored configuration`() = runTest(dispatcher) {
+        // A transient empty enumeration must not be mistaken for "everything was
+        // uninstalled", which would discard all favorites and hidden entries.
+        val repo = FakeAppRepository(emptyList())
+        val settings = FakeSettingsRepository().apply {
+            setFavorites("chrome", "maps")
+            setHidden("photos")
+        }
+        viewModel(appRepo = repo, settingsRepo = settings)
+
+        advanceUntilIdle()
+
+        assertEquals(0, settings.pruneCalls)
+        assertEquals(listOf("chrome", "maps"), settings.currentFavorites)
+        assertEquals(setOf("photos"), settings.currentHidden)
+    }
+
+    @Test
+    fun `a failed load does not prune`() = runTest(dispatcher) {
+        val repo = FakeAppRepository().apply { failure = RuntimeException("boom") }
+        val settings = FakeSettingsRepository().apply { setFavorites("ghost") }
+        viewModel(appRepo = repo, settingsRepo = settings)
+
+        advanceUntilIdle()
+
+        assertEquals(0, settings.pruneCalls)
+        assertEquals(listOf("ghost"), settings.currentFavorites)
+    }
+
+    @Test
+    fun `a reinstall does not resurrect the old favorite state`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val settings = FakeSettingsRepository().apply { setFavorites("chrome", "maps") }
+        val vm = viewModel(appRepo = repo, settingsRepo = settings)
+        advanceUntilIdle()
+
+        // Maps is uninstalled, then reinstalled.
+        repo.apps = listOf(app("Chrome"))
+        vm.refresh()
+        advanceUntilIdle()
+        assertEquals(listOf("chrome"), settings.currentFavorites)
+
+        repo.apps = listOf(app("Chrome"), app("Maps"))
+        vm.refresh()
+        advanceUntilIdle()
+
+        assertEquals(
+            "the old favorite must not come back with the package",
+            listOf("Chrome"),
+            vm.favorites.value.map { it.label },
+        )
+    }
+
+    @Test
+    fun `a prune failure is surfaced rather than crashing`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome")))
+        val settings = FakeSettingsRepository().apply {
+            setFavorites("ghost")
+            writeFailure = java.io.IOException("disk full")
+        }
+        val vm = viewModel(appRepo = repo, settingsRepo = settings)
+
+        advanceUntilIdle()
+
+        assertNotNull(vm.settingsError.value)
+    }
+
     // ── STAB-5: failed actions are visible, not silent ──────────────────────
 
     @Test

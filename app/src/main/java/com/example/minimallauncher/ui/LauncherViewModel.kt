@@ -233,6 +233,7 @@ class LauncherViewModel(
             allAppsFlow.value = apps
             _appListError.value = null
             _isLoadingApps.value = false
+            pruneStaleSettings(apps)
         } catch (cancelled: CancellationException) {
             // Superseded by a newer request — not a failure, and not "loaded":
             // leave the loading flag alone for the replacement load to clear.
@@ -242,6 +243,30 @@ class LauncherViewModel(
             logger.record(TAG_APP_LIST, error, "app list load failed")
             _appListError.value = error
             _isLoadingApps.value = false
+        }
+    }
+
+    /**
+     * Forgets favorites/hidden entries for packages that are no longer installed,
+     * so reinstalling an app does not silently resurrect old choices.
+     *
+     * Two safety properties:
+     *  - never prunes against an empty enumeration, which would wipe the user's
+     *    entire configuration on a transient empty result;
+     *  - skips the store entirely when nothing is stale, so the common path does no
+     *    write and cannot cause a flicker.
+     */
+    private suspend fun pruneStaleSettings(apps: List<AppInfo>) {
+        if (apps.isEmpty()) return
+        val installed = apps.mapTo(mutableSetOf()) { it.packageName }
+        val stored = favoritePkgs.value + hiddenPkgs.value
+        if (stored.none { it !in installed }) return
+
+        try {
+            settingsRepo.pruneMissing(installed)
+        } catch (error: Exception) {
+            logger.record(TAG_SETTINGS, error, "pruning stale settings failed")
+            _settingsError.value = error
         }
     }
 

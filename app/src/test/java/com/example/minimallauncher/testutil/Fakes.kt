@@ -133,6 +133,16 @@ class FakeSettingsRepository : SettingsRepository {
         writeFailure?.let { throw it }
         themeFlow.value = key
     }
+
+    var pruneCalls: Int = 0
+        private set
+
+    override suspend fun pruneMissing(installed: Set<String>) {
+        pruneCalls++
+        writeFailure?.let { throw it }
+        favoritesFlow.update { current -> current.filter { it in installed } }
+        hiddenFlow.update { current -> current.filterTo(mutableSetOf()) { it in installed } }
+    }
 }
 
 /** [AppChangeSource] whose events the test emits explicitly. */

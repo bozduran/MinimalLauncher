@@ -40,4 +40,15 @@ interface SettingsRepository {
     suspend fun setUse24h(value: Boolean)
 
     suspend fun setTheme(key: String)
+
+    /**
+     * Drops favorites and hidden entries whose package is not in [installed].
+     *
+     * Uninstalling an app used to leave its favorite/hidden entries in the store
+     * forever, so reinstalling the package silently resurrected the old choices.
+     *
+     * Callers must not pass an empty set: that would discard the user's entire
+     * configuration on a transient empty enumeration.
+     */
+    suspend fun pruneMissing(installed: Set<String>)
 }
