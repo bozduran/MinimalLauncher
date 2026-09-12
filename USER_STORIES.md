@@ -9,7 +9,7 @@
 
 ## Implementation status
 
-Implemented on branch `refactor/user-stories-implementation` (33 stories complete, 5 partial — 38 of 41 touched).
+Implemented on branch `refactor/user-stories-implementation` (33 stories complete, 7 partial — 40 of 41 touched).
 Every commit below is atomic and was verified with `./gradlew assembleDebug assembleRelease testDebugUnitTest`
 plus a green test run before committing. **236 unit tests, 0 failures**, lint clean and blocking.
 
@@ -53,8 +53,11 @@ plus a green test run before committing. **236 unit tests, 0 failures**, lint cl
 | PLAT-1 LauncherApps / profiles | ✅ done (work-profile *rendering* unverified on device) | `4c0be4c` |
 | QA-3 instrumented UI suite | ⚠️ partial — written and compiles, never executed | `3229699` |
 | A11Y-2 touch targets | ⚠️ partial — tap targets fixed, font-scale rendering unverified | `31614ba` |
+| PERF-5 lifecycle-aware UI work | ⚠️ partial — changes in place; recomposition counts unmeasured | `9238155` |
+| A11Y-1 screen-reader routes | ⚠️ partial — semantics added; TalkBack behaviour unverified | `$(git log --oneline -1 | cut -d' ' -f1)`
 
-**Still open (3 stories):** PERF-3, PERF-5, A11Y-1.
+**Still open (1 story):** PERF-3 (baseline profiles) — must be generated from a
+measured device run; writing one by hand would be fabrication.
 
 ### Device verification policy
 
@@ -67,9 +70,9 @@ Consequences for the open stories — these are the reasons they are not closed:
 | Story | Why a device is needed | Status under this policy |
 | --- | --- | --- |
 | QA-3 instrumented UI tests | Tests must run on a device | ⚠️ written + compiles; runs in CI's emulator job (QA-4) |
-| A11Y-1 TalkBack reach | Needs a real accessibility service | Open — semantics not yet added |
+| A11Y-1 TalkBack reach | Needs a real accessibility service | ⚠️ semantics added; announcements unverified |
 | A11Y-2 font scale / tap targets | Needs a device at 1.3x–2.0x font scale | ⚠️ tap targets fixed; font scale unverified |
-| PERF-5 recomposition counts | Needs Layout Inspector / JankStats on a device | Open |
+| PERF-5 recomposition counts | Needs Layout Inspector / JankStats on a device | ⚠️ changes landed; counts unmeasured |
 | PERF-3 baseline profiles | Profiles are generated and measured on a device | Open — not startable |
 | PLAT-1 `LauncherApps` / work profiles | Needs a work profile or second user | ✅ done — enumeration is behind an interface and unit-tested; only the on-device rendering is unverified |
 
