@@ -35,6 +35,11 @@
 
           windowSoftInputMode="adjustResize"
             Pairs with enableEdgeToEdge; the drawer also applies imePadding().
+
+          enableOnBackInvokedCallback="true"
+            Opts into the platform back dispatcher, so androidx BackHandler
+            participates in predictive back instead of the legacy path (which is
+            deprecated and removed for apps targeting later SDKs).
         -->
         <activity
             android:name=".ui.MainActivity"
@@ -43,6 +48,7 @@
             android:stateNotNeeded="true"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
+            android:enableOnBackInvokedCallback="true"
             android:theme="@style/Theme.MinimalLauncher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -131,10 +131,15 @@ private fun LauncherRoot(vm: LauncherViewModel) {
         }
     }
 
-    // Back gesture handling.
-    BackHandler(enabled = showSettings) { showSettings = false }
-    BackHandler(enabled = !showSettings && pagerState.currentPage == 1) {
-        scope.launch { pagerState.animateScrollToPage(0) }
+    // One handler for every page, so Back on the home screen is an explicit no-op
+    // rather than whatever the platform default does. Finishing a HOME activity
+    // would leave the user without a home screen.
+    BackHandler(enabled = true) {
+        when (BackNavigation.decide(showSettings, pagerState.currentPage)) {
+            BackAction.CloseSettings -> showSettings = false
+            BackAction.GoToHomePage -> scope.launch { pagerState.animateScrollToPage(0) }
+            BackAction.Stay -> Unit
+        }
     }
 
     if (showSettings) {
