@@ -32,7 +32,7 @@ import androidx.compose.ui.graphics.luminance
 import com.example.minimallauncher.ui.theme.paletteFor
 class MainActivity : ComponentActivity() {
 
-    private val vm: LauncherViewModel by viewModels()
+    private val vm: LauncherViewModel by viewModels { LauncherViewModelFactory(application) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

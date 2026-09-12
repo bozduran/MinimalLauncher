@@ -1,18 +1,14 @@
 package com.example.minimallauncher.ui
 
-import android.app.Application
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.minimallauncher.data.AppChangeSource
 import com.example.minimallauncher.data.AppInfo
 import com.example.minimallauncher.data.AppRepository
 import com.example.minimallauncher.data.SettingsRepository
 import com.example.minimallauncher.data.TextNormalizer
 import com.example.minimallauncher.ui.theme.DEFAULT_THEME_KEY
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,10 +21,19 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class LauncherViewModel(app: Application) : AndroidViewModel(app) {
-
-    private val appRepo = AppRepository(app)
-    private val settingsRepo = SettingsRepository(app)
+/**
+ * Holds the launcher's app/favorite/search state.
+ *
+ * Dependencies arrive through the constructor (see [LauncherViewModelFactory]) so
+ * every behaviour here can be exercised in a JVM unit test with fakes and a
+ * `TestDispatcher` — no Robolectric, no device.
+ */
+class LauncherViewModel(
+    private val appRepo: AppRepository,
+    private val settingsRepo: SettingsRepository,
+    appChangeSource: AppChangeSource,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : ViewModel() {
 
     private val allAppsFlow = MutableStateFlow<List<AppInfo>>(emptyList())
     val allApps: StateFlow<List<AppInfo>> = allAppsFlow.asStateFlow()
@@ -72,39 +77,18 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 .toList()
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    // Refresh the app list live whenever a package is added/removed/changed.
-    private val packageReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            refresh()
-        }
-    }
-
     init {
         refresh()
 
-        val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_PACKAGE_ADDED)
-            addAction(Intent.ACTION_PACKAGE_REMOVED)
-            addAction(Intent.ACTION_PACKAGE_CHANGED)
-            addAction(Intent.ACTION_PACKAGE_REPLACED)
-            addDataScheme("package")
+        // Registration lifetime follows collection (see PackageChangeSource).
+        viewModelScope.launch {
+            appChangeSource.changes.collect { refresh() }
         }
-        ContextCompat.registerReceiver(
-            getApplication(),
-            packageReceiver,
-            filter,
-            ContextCompat.RECEIVER_NOT_EXPORTED,
-        )
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        runCatching { getApplication<Application>().unregisterReceiver(packageReceiver) }
     }
 
     fun refresh() {
         viewModelScope.launch {
-            val apps = withContext(Dispatchers.IO) { appRepo.loadApps() }
+            val apps = withContext(ioDispatcher) { appRepo.loadApps() }
             allAppsFlow.value = apps
         }
     }
