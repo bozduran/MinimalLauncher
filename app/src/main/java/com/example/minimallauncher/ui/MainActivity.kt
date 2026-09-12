@@ -135,7 +135,7 @@ private fun LauncherRoot(vm: LauncherViewModel) {
     // rather than whatever the platform default does. Finishing a HOME activity
     // would leave the user without a home screen.
     BackHandler(enabled = true) {
-        when (BackNavigation.decide(showSettings, pagerState.currentPage)) {
+        when (BackNavigation.decide(showSettings, pagerState.settledPage)) {
             BackAction.CloseSettings -> showSettings = false
             BackAction.GoToHomePage -> scope.launch { pagerState.animateScrollToPage(0) }
             BackAction.Stay -> Unit
@@ -157,7 +157,9 @@ private fun LauncherRoot(vm: LauncherViewModel) {
                     onOpenSettings = { showSettings = true },
                     onOpenDrawer = { scope.launch { pagerState.animateScrollToPage(1) } },
                 )
-                else -> DrawerScreen(vm = vm, active = pagerState.currentPage == 1)
+                // settledPage, not currentPage: currentPage changes mid-drag, which
+                // recomposed the whole drawer on every pixel of a swipe.
+                else -> DrawerScreen(vm = vm, active = pagerState.settledPage == 1)
             }
         }
     }

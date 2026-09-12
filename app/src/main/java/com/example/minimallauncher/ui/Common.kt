@@ -12,7 +12,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -35,9 +35,15 @@ import com.example.minimallauncher.ui.theme.TextSecondary
 import com.example.minimallauncher.ui.theme.TextTertiary
 import kotlinx.coroutines.flow.StateFlow
 
-/** Convenience wrapper so screens can collect a StateFlow without extra imports. */
+/**
+ * Collects a [StateFlow] only while the composition's lifecycle is at least STARTED.
+ *
+ * A plain `collectAsState()` keeps collecting while the launcher is stopped — a HOME
+ * activity is stopped often (another app is in front, the screen is off) — so every
+ * state change still drove recomposition work for a UI nobody could see.
+ */
 @Composable
-fun <T> StateFlow<T>.collectAsStateCompat(): State<T> = collectAsState()
+fun <T> StateFlow<T>.collectAsStateCompat(): State<T> = collectAsStateWithLifecycle()
 
 @Composable
 fun SearchField(

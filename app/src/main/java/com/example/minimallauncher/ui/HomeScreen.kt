@@ -15,9 +15,10 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +26,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -42,15 +46,24 @@ import java.time.LocalDateTime
 import java.util.Locale
 
 @Composable
-private fun rememberCurrentTime(): State<LocalDateTime> =
-    produceState(initialValue = LocalDateTime.now()) {
-        while (true) {
-            value = LocalDateTime.now()
-            // tick on the minute boundary (we only render HH:mm)
-            val delayMs = 60_000L - (System.currentTimeMillis() % 60_000L)
-            delay(delayMs)
+private fun rememberCurrentTime(): State<LocalDateTime> {
+    // Bound to RESUMED: a HOME activity spends most of its life stopped, and an
+    // always-running minute ticker kept a coroutine and a recomposition alive for a
+    // clock nobody was looking at.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val time = remember { mutableStateOf(LocalDateTime.now()) }
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                time.value = LocalDateTime.now()
+                // tick on the minute boundary (we only render HH:mm)
+                val delayMs = 60_000L - (System.currentTimeMillis() % 60_000L)
+                delay(delayMs)
+            }
         }
     }
+    return time
+}
 
 @Composable
 fun HomeScreen(
