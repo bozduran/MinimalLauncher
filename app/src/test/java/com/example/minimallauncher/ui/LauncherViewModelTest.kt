@@ -534,6 +534,34 @@ class LauncherViewModelTest {
             assertEquals(listOf("Chrome"), vm.allApps.value.map { it.label })
         }
 
+    // ── DRAW-2: search-focus failures are reported, not swallowed ───────────
+
+    @Test
+    fun `a focus failure is recorded through the logger seam`() = runTest(dispatcher) {
+        val logger = RecordingAppLogger()
+        val vm = viewModel(logger = logger)
+
+        vm.onSearchFocusFailed(IllegalStateException("no focus target"))
+
+        assertEquals(1, logger.recordsFor("ui").size)
+        assertTrue(
+            logger.recordsFor("ui").single().throwable is IllegalStateException,
+        )
+    }
+
+    @Test
+    fun `reporting a focus failure does not crash or disturb state`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome")))
+        val vm = viewModel(appRepo = repo)
+        advanceUntilIdle()
+
+        vm.onSearchFocusFailed(IllegalStateException("no focus target"))
+        advanceUntilIdle()
+
+        assertEquals(listOf("Chrome"), vm.drawerApps.value.map { it.label })
+        assertNull(vm.appListError.value)
+    }
+
     // ── DRAW-3: consistent return-to-home ───────────────────────────────────
 
     @Test

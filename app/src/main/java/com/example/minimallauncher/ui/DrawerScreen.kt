@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -44,7 +45,8 @@ import com.example.minimallauncher.ui.theme.JetBrainsMono
 import com.example.minimallauncher.ui.theme.SurfaceCol
 import com.example.minimallauncher.ui.theme.TextPrimary
 import com.example.minimallauncher.ui.theme.TextSecondary
-import kotlinx.coroutines.delay
+
+private const val FOCUS_ATTEMPTS = 2
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -63,14 +65,25 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
         if (!active) menuApp = null
     }
 
-    // Auto-focus the search box + show keyboard when the drawer is the active page.
+    // Auto-focus the search box when the drawer becomes the active page.
+    //
+    // Waits for a frame rather than sleeping: a fixed delay was a guess about frame
+    // timing, so on a slow first composition the field might not be attached yet and
+    // the failure was swallowed by runCatching (the keyboard opened over an
+    // unfocused field, with no log and no retry).
     LaunchedEffect(active) {
-        if (active) {
-            delay(100) // let the field finish laying out before we focus it
-            runCatching { focusRequester.requestFocus() }
-            keyboard?.show()
-        } else {
+        if (!active) {
             keyboard?.hide()
+            return@LaunchedEffect
+        }
+        // Two attempts, each preceded by a frame, then report rather than swallow.
+        repeat(FOCUS_ATTEMPTS) { attempt ->
+            withFrameNanos { }
+            val result = runCatching { focusRequester.requestFocus() }
+            if (result.isSuccess) return@LaunchedEffect
+            if (attempt == FOCUS_ATTEMPTS - 1) {
+                vm.onSearchFocusFailed(result.exceptionOrNull() ?: IllegalStateException("no focus target"))
+            }
         }
     }
 

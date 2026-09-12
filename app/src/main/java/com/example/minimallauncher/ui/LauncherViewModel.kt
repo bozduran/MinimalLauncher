@@ -325,6 +325,17 @@ class LauncherViewModel(
     /** The last outgoing action that could not be performed, or null. */
     val actionFailure: StateFlow<ActionFailure?> = _actionFailure.asStateFlow()
 
+    /**
+     * Records that the search field could not be focused.
+     *
+     * The drawer asks for focus after waiting a frame and retries once; if both
+     * attempts fail it reports here so the failure is diagnosable instead of being
+     * swallowed by a `runCatching`.
+     */
+    fun onSearchFocusFailed(error: Throwable) {
+        logger.record(TAG_UI, error, "search field could not be focused")
+    }
+
     /** Clears the failure once the user has seen it. */
     fun dismissActionFailure() {
         _actionFailure.value = null
@@ -387,6 +398,7 @@ class LauncherViewModel(
         const val TAG_APP_LIST = "app-list-load"
         const val TAG_SETTINGS = "settings-write"
         const val TAG_GATEWAY = "launcher-gateway"
+        const val TAG_UI = "ui"
 
         /** Collapses a burst of package-change broadcasts into one enumeration. */
         const val PACKAGE_EVENT_DEBOUNCE_MS = 250L
