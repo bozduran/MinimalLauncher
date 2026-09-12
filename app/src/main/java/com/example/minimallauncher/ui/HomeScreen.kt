@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -36,7 +37,6 @@ import com.example.minimallauncher.ui.theme.TextSecondary
 import com.example.minimallauncher.ui.theme.TextTertiary
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
@@ -62,9 +62,9 @@ fun HomeScreen(
     val appListError by vm.appListError.collectAsStateCompat()
     val now by rememberCurrentTime()
 
-    val timePattern = if (use24h) "HH:mm" else "h:mm"
-    val timeFmt = remember(use24h) { DateTimeFormatter.ofPattern(timePattern, Locale.getDefault()) }
-    val dateFmt = remember { DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.getDefault()) }
+    // Compiled once per locale rather than reallocated on each (per-minute) recomposition.
+    val locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
+    val clock = remember(locale) { ClockFormatter(locale) }
 
     BoxWithConstraints(
         modifier = Modifier
@@ -90,7 +90,7 @@ fun HomeScreen(
             verticalArrangement = Arrangement.Center,
         ) {
             Text(
-                text = now.format(timeFmt),
+                text = clock.time(now, use24h),
                 fontFamily = JetBrainsMono,
                 fontWeight = FontWeight.Light,
                 fontSize = 66.sp,
@@ -100,7 +100,7 @@ fun HomeScreen(
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                text = now.format(dateFmt).replaceFirstChar { it.titlecase(Locale.getDefault()) },
+                text = clock.date(now),
                 fontFamily = JetBrainsMono,
                 fontWeight = FontWeight.Normal,
                 fontSize = 15.sp,
