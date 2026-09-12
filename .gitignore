@@ -9,3 +9,6 @@
 .cxx
 local.properties
 /app/build
+# Container/sandbox build state (GRADLE_USER_HOME / ANDROID_USER_HOME redirection)
+/.gradle-user-home
+/.android-home
