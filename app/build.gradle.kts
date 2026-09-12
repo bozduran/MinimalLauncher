@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -16,13 +18,39 @@ android {
         versionName = "1.0"
     }
 
+    signingConfigs {
+        // Release signing is configured from keystore.properties, which is
+        // gitignored. When it is absent (contributors, CI without secrets) the
+        // release build still runs so R8/shrinking can be verified — it just
+        // produces an unsigned artifact.
+        create("release") {
+            val keystoreProperties = rootProject.file("keystore.properties")
+            if (keystoreProperties.exists()) {
+                val properties = Properties().apply {
+                    keystoreProperties.inputStream().use { load(it) }
+                }
+                storeFile = file(properties.getProperty("storeFile"))
+                storePassword = properties.getProperty("storePassword")
+                keyAlias = properties.getProperty("keyAlias")
+                keyPassword = properties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // A launcher's cold start is its headline performance metric, so the
+            // release build is minified and resource-shrunk rather than shipping the
+            // Compose runtime and all 38 palettes untrimmed.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (rootProject.file("keystore.properties").exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {
