@@ -1,5 +1,6 @@
 package com.example.minimallauncher.ui
 
+import com.example.minimallauncher.data.AppInfo
 import com.example.minimallauncher.testutil.FakeAppChangeSource
 import com.example.minimallauncher.testutil.FakeAppRepository
 import com.example.minimallauncher.testutil.FakeSettingsRepository
@@ -9,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -113,6 +115,185 @@ class LauncherViewModelTest {
         advanceUntilIdle()
 
         assertEquals(2, vm.allApps.value.size)
+    }
+
+    // ── DRAW-1: auto-launch only on deliberate input, exactly once ──────────
+
+    /** Collects every launch the ViewModel requests. */
+    private fun TestScope.launchRecorder(vm: LauncherViewModel): MutableList<AppInfo> {
+        val received = mutableListOf<AppInfo>()
+        backgroundScope.launch { vm.launchRequests.collect { received += it } }
+        return received
+    }
+
+    private suspend fun TestScope.typeAndWait(vm: LauncherViewModel, text: String) {
+        vm.setQuery(text)
+        testScheduler.advanceTimeBy(400) // past the search debounce
+        testScheduler.runCurrent()
+    }
+
+    @Test
+    fun `a query narrowing to one match auto-launches that app once`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val vm = viewModel(appRepo = repo)
+        val launched = launchRecorder(vm)
+        advanceUntilIdle()
+
+        typeAndWait(vm, "chr")
+
+        assertEquals(listOf("chrome"), launched.map { it.packageName })
+    }
+
+    @Test
+    fun `typing more characters for the same single match does not relaunch`() =
+        runTest(dispatcher) {
+            val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+            val vm = viewModel(appRepo = repo)
+            val launched = launchRecorder(vm)
+            advanceUntilIdle()
+
+            typeAndWait(vm, "chr")
+            assertEquals(1, launched.size)
+
+            typeAndWait(vm, "chro")
+            typeAndWait(vm, "chrom")
+
+            assertEquals(
+                "narrowing further must not reopen the same app",
+                listOf("chrome"),
+                launched.map { it.packageName },
+            )
+        }
+
+    @Test
+    fun `auto-launch does not fire before the debounce elapses`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val vm = viewModel(appRepo = repo)
+        val launched = launchRecorder(vm)
+        advanceUntilIdle()
+
+        vm.setQuery("chr")
+        testScheduler.advanceTimeBy(100)
+        testScheduler.runCurrent()
+        assertTrue("must not launch mid-typing", launched.isEmpty())
+
+        testScheduler.advanceTimeBy(300)
+        testScheduler.runCurrent()
+        assertEquals(1, launched.size)
+    }
+
+    @Test
+    fun `a restored single-match query never auto-launches`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val vm = viewModel(appRepo = repo)
+        val launched = launchRecorder(vm)
+        advanceUntilIdle()
+
+        // Simulates the query surviving a recreation (a restored ViewModel, or a
+        // future SavedStateHandle restore) without a user edit in this session.
+        vm.query.value = "chr"
+        testScheduler.advanceTimeBy(1_000)
+        advanceUntilIdle()
+
+        assertTrue("restore must never open an app", launched.isEmpty())
+    }
+
+    @Test
+    fun `clearing the query re-arms auto-launch`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val vm = viewModel(appRepo = repo)
+        val launched = launchRecorder(vm)
+        advanceUntilIdle()
+
+        typeAndWait(vm, "chr")
+        typeAndWait(vm, "")
+        typeAndWait(vm, "chr")
+
+        assertEquals(2, launched.size)
+    }
+
+    @Test
+    fun `pressing Home re-arms auto-launch`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val vm = viewModel(appRepo = repo)
+        val launched = launchRecorder(vm)
+        advanceUntilIdle()
+
+        typeAndWait(vm, "chr")
+        vm.onHomePressed()
+        advanceUntilIdle()
+        typeAndWait(vm, "chr")
+
+        assertEquals(2, launched.size)
+    }
+
+    @Test
+    fun `a query matching several apps does not auto-launch`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Chromecast")))
+        val vm = viewModel(appRepo = repo)
+        val launched = launchRecorder(vm)
+        advanceUntilIdle()
+
+        typeAndWait(vm, "chrom")
+
+        assertTrue(launched.isEmpty())
+    }
+
+    @Test
+    fun `a query matching nothing does not auto-launch`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome")))
+        val vm = viewModel(appRepo = repo)
+        val launched = launchRecorder(vm)
+        advanceUntilIdle()
+
+        typeAndWait(vm, "zzz")
+
+        assertTrue(launched.isEmpty())
+    }
+
+    @Test
+    fun `a hidden app is never auto-launched`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val settings = FakeSettingsRepository().apply { setHidden("chrome") }
+        val vm = viewModel(appRepo = repo, settingsRepo = settings)
+        val launched = launchRecorder(vm)
+        advanceUntilIdle()
+
+        typeAndWait(vm, "chrome")
+
+        assertTrue("hidden apps must stay hidden from search", launched.isEmpty())
+    }
+
+    @Test
+    fun `submitting the search launches the top result once`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val vm = viewModel(appRepo = repo)
+        val launched = launchRecorder(vm)
+        advanceUntilIdle()
+
+        vm.setQuery("map")
+        advanceUntilIdle()
+        vm.submitSearch()
+        typeAndWait(vm, "map")
+
+        assertEquals(
+            "submitting must not be followed by an auto-launch of the same app",
+            listOf("maps"),
+            launched.map { it.packageName },
+        )
+    }
+
+    @Test
+    fun `submitting an empty search does nothing`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome")))
+        val vm = viewModel(appRepo = repo)
+        val launched = launchRecorder(vm)
+        advanceUntilIdle()
+
+        vm.submitSearch()
+        advanceUntilIdle()
+
+        assertTrue(launched.isEmpty())
     }
 
     // ── DATA-2: hiding an app removes it from the home screen ───────────────

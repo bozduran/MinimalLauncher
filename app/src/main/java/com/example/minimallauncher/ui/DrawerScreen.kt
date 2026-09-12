@@ -23,7 +23,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,8 +55,6 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
 
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
-    val latestApps by rememberUpdatedState(apps)
-    var lastLaunched by remember { mutableStateOf<String?>(null) }
 
     // Auto-focus the search box + show keyboard when the drawer is the active page.
     LaunchedEffect(active) {
@@ -70,19 +67,11 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
         }
     }
 
-    // Auto-launch when the query narrows to exactly one app (debounced so it
-    // doesn't fire mid-typing, and guarded so it won't relaunch on return).
-    LaunchedEffect(query) {
-        if (query.isBlank()) {
-            lastLaunched = null
-            return@LaunchedEffect
-        }
-        delay(350)
-        val results = latestApps
-        if (results.size == 1 && query != lastLaunched) {
-            lastLaunched = query
-            AppLauncher.launch(context, results.first())
-        }
+    // Launches decided by the ViewModel: the single result of a search the user is
+    // typing, or the top result of an explicit submission. The drawer only performs
+    // the effect — the "may I launch, and which app" decision is testable state.
+    LaunchedEffect(vm) {
+        vm.launchRequests.collect { app -> AppLauncher.launch(context, app) }
     }
 
     Column(
@@ -97,7 +86,7 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
             onChange = vm::setQuery,
             modifier = Modifier.padding(horizontal = 28.dp, vertical = 14.dp),
             focusRequester = focusRequester,
-            onSearch = { latestApps.firstOrNull()?.let { AppLauncher.launch(context, it) } },
+            onSearch = { vm.submitSearch() },
         )
         HorizontalDivider(color = BorderCol, thickness = 1.dp)
 

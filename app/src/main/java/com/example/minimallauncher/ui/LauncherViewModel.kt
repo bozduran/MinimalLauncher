@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -80,6 +82,25 @@ class LauncherViewModel(
     // Emits when the user presses Home so the UI scrolls back to page 0.
     private val _goHome = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val goHome = _goHome
+
+    /**
+     * Apps the launcher should open on its own: the single result of a search the
+     * user is still typing, or the top result of an explicit search submission.
+     *
+     * The decision lives here rather than in a composable effect because it depends
+     * on state that outlives the composition. Previously the guard was a `remember`
+     * in the drawer, so anything recreating the composable (process death, a
+     * system-initiated recreate, "don't keep activities") left a restored
+     * single-match query with no guard and launched an app the user never asked for.
+     */
+    private val _launchRequests = MutableSharedFlow<AppInfo>(extraBufferCapacity = 1)
+    val launchRequests: Flow<AppInfo> = _launchRequests
+
+    /** Counts user-initiated query edits; 0 means the query was never edited this session. */
+    private var userEditGeneration = 0
+
+    /** Last package auto-launched for the current search, so re-narrowing cannot relaunch it. */
+    private var lastAutoLaunchedPackage: String? = null
 
     private val favoritePkgs = settingsRepo.favorites
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -148,6 +169,33 @@ class LauncherViewModel(
                 if (error != null) _settingsError.value = error
             }
         }
+
+        // Auto-launch: when a search the user typed narrows to exactly one app,
+        // open it — once. `combine` keeps the query and the matches consistent, and
+        // the debounce keeps it from firing mid-word.
+        viewModelScope.launch {
+            combine(query, drawerApps) { q, matches -> q to matches }
+                .debounce(SEARCH_DEBOUNCE_MS)
+                .collect { (q, matches) -> considerAutoLaunch(q, matches) }
+        }
+    }
+
+    private fun considerAutoLaunch(q: String, matches: List<AppInfo>) {
+        if (q.isBlank()) {
+            // A fresh search: allow the next single-match result to launch again.
+            lastAutoLaunchedPackage = null
+            return
+        }
+        // No user edit in this session => the query was restored, not typed. Never
+        // launch on restore.
+        if (userEditGeneration == 0) return
+
+        val match = matches.singleOrNull() ?: return
+        // Typing more characters can keep the same single match; do not relaunch it.
+        if (match.packageName == lastAutoLaunchedPackage) return
+
+        lastAutoLaunchedPackage = match.packageName
+        _launchRequests.tryEmit(match)
     }
 
     /**
@@ -189,11 +237,28 @@ class LauncherViewModel(
     }
 
     fun setQuery(q: String) {
+        if (q == query.value) return
+        userEditGeneration++
+        if (q.isBlank()) lastAutoLaunchedPackage = null
         query.value = q
+    }
+
+    /**
+     * Explicit search submission (keyboard Search/Enter).
+     *
+     * Opens the top result and records it as launched, so the pending auto-launch
+     * for the same app cannot fire a second time.
+     */
+    fun submitSearch() {
+        val top = drawerApps.value.firstOrNull() ?: return
+        if (top.packageName == lastAutoLaunchedPackage) return
+        lastAutoLaunchedPackage = top.packageName
+        _launchRequests.tryEmit(top)
     }
 
     fun onHomePressed() {
         query.value = ""
+        lastAutoLaunchedPackage = null
         _goHome.tryEmit(Unit)
     }
 
@@ -226,5 +291,8 @@ class LauncherViewModel(
 
         /** Collapses a burst of package-change broadcasts into one enumeration. */
         const val PACKAGE_EVENT_DEBOUNCE_MS = 250L
+
+        /** How long typing must pause before a single search result auto-launches. */
+        const val SEARCH_DEBOUNCE_MS = 350L
     }
 }
