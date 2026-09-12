@@ -13,6 +13,7 @@ import com.example.minimallauncher.ui.theme.DEFAULT_THEME_KEY
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -37,6 +38,7 @@ import kotlinx.coroutines.withContext
  * every behaviour here can be exercised in a JVM unit test with fakes and a
  * `TestDispatcher` — no Robolectric, no device.
  */
+@OptIn(FlowPreview::class) // Flow.debounce is still a preview API in coroutines 1.7.3
 class LauncherViewModel(
     private val appRepo: AppRepository,
     private val settingsRepo: SettingsRepository,

@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import com.example.minimallauncher.data.AppLauncher
-import com.example.minimallauncher.ui.theme.Accent
 import com.example.minimallauncher.ui.theme.Bg
 import com.example.minimallauncher.ui.theme.JetBrainsMono
 import com.example.minimallauncher.ui.theme.TextPrimary
