@@ -3,6 +3,7 @@ package com.example.minimallauncher.ui
 import com.example.minimallauncher.data.AppInfo
 import com.example.minimallauncher.testutil.FakeAppChangeSource
 import com.example.minimallauncher.testutil.FakeAppRepository
+import com.example.minimallauncher.testutil.FakeLauncherGateway
 import com.example.minimallauncher.testutil.FakeSettingsRepository
 import com.example.minimallauncher.testutil.RecordingAppLogger
 import com.example.minimallauncher.testutil.app
@@ -49,6 +50,7 @@ class LauncherViewModelTest {
         appRepo: FakeAppRepository = FakeAppRepository(),
         settingsRepo: FakeSettingsRepository = FakeSettingsRepository(),
         changeSource: FakeAppChangeSource = FakeAppChangeSource(),
+        gateway: FakeLauncherGateway = FakeLauncherGateway(),
         ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = dispatcher,
         computationDispatcher: kotlinx.coroutines.CoroutineDispatcher = dispatcher,
         logger: com.example.minimallauncher.data.AppLogger = RecordingAppLogger(),
@@ -56,6 +58,7 @@ class LauncherViewModelTest {
         appRepo,
         settingsRepo,
         changeSource,
+        gateway,
         ioDispatcher,
         computationDispatcher,
         logger,
@@ -123,6 +126,89 @@ class LauncherViewModelTest {
         advanceUntilIdle()
 
         assertEquals(2, vm.allApps.value.size)
+    }
+
+    // ── ARCH-3: all outgoing actions go through the gateway ─────────────────
+
+    @Test
+    fun `tapping an app routes through the gateway`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val gateway = FakeLauncherGateway()
+        val vm = viewModel(appRepo = repo, gateway = gateway)
+        advanceUntilIdle()
+
+        vm.launchApp(vm.drawerApps.value.first { it.packageName == "maps" })
+
+        assertEquals(listOf("maps"), gateway.launchedPackages)
+    }
+
+    @Test
+    fun `app menu actions route through the gateway`() = runTest(dispatcher) {
+        val gateway = FakeLauncherGateway()
+        val vm = viewModel(gateway = gateway)
+        advanceUntilIdle()
+
+        vm.openAppInfo("com.example.maps")
+        vm.uninstall("com.example.maps")
+
+        assertEquals(
+            listOf(
+                FakeLauncherGateway.Call.Details("com.example.maps"),
+                FakeLauncherGateway.Call.Uninstall("com.example.maps"),
+            ),
+            gateway.calls,
+        )
+    }
+
+    @Test
+    fun `clock, calendar and home settings route through the gateway`() = runTest(dispatcher) {
+        val gateway = FakeLauncherGateway()
+        val vm = viewModel(gateway = gateway)
+        advanceUntilIdle()
+
+        vm.openClock()
+        vm.openCalendar()
+        vm.openHomeSettings()
+
+        assertEquals(
+            listOf(
+                FakeLauncherGateway.Call.Clock,
+                FakeLauncherGateway.Call.Calendar,
+                FakeLauncherGateway.Call.HomeSettings,
+            ),
+            gateway.calls,
+        )
+    }
+
+    @Test
+    fun `a failing launch is recorded through the logger`() = runTest(dispatcher) {
+        val gateway = FakeLauncherGateway().apply { failEverything = true }
+        val logger = RecordingAppLogger()
+        val vm = viewModel(gateway = gateway, logger = logger)
+        advanceUntilIdle()
+
+        vm.launchApp(app("Chrome"))
+
+        assertEquals(1, logger.recordsFor("launcher-gateway").size)
+        assertTrue(
+            logger.recordsFor("launcher-gateway").single().throwable
+                is android.content.ActivityNotFoundException,
+        )
+    }
+
+    @Test
+    fun `a failing outgoing action does not crash the launcher`() = runTest(dispatcher) {
+        val gateway = FakeLauncherGateway().apply { failEverything = true }
+        val vm = viewModel(gateway = gateway)
+        advanceUntilIdle()
+
+        vm.openClock()
+        vm.openCalendar()
+        vm.openHomeSettings()
+        vm.openAppInfo("com.example.maps")
+        vm.uninstall("com.example.maps")
+
+        assertEquals(5, gateway.calls.size)
     }
 
     // ── DRAW-4: search filtering off the main thread ────────────────────────
@@ -255,12 +341,8 @@ class LauncherViewModelTest {
 
     // ── DRAW-1: auto-launch only on deliberate input, exactly once ──────────
 
-    /** Collects every launch the ViewModel requests. */
-    private fun TestScope.launchRecorder(vm: LauncherViewModel): MutableList<AppInfo> {
-        val received = mutableListOf<AppInfo>()
-        backgroundScope.launch { vm.launchRequests.collect { received += it } }
-        return received
-    }
+    /** Records launches through a fake gateway, so tests assert the real action. */
+    private fun launchRecorder(): FakeLauncherGateway = FakeLauncherGateway()
 
     private suspend fun TestScope.typeAndWait(vm: LauncherViewModel, text: String) {
         vm.setQuery(text)
@@ -271,25 +353,25 @@ class LauncherViewModelTest {
     @Test
     fun `a query narrowing to one match auto-launches that app once`() = runTest(dispatcher) {
         val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
-        val vm = viewModel(appRepo = repo)
-        val launched = launchRecorder(vm)
+        val gateway = launchRecorder()
+        val vm = viewModel(appRepo = repo, gateway = gateway)
         advanceUntilIdle()
 
         typeAndWait(vm, "chr")
 
-        assertEquals(listOf("chrome"), launched.map { it.packageName })
+        assertEquals(listOf("chrome"), gateway.launchedPackages)
     }
 
     @Test
     fun `typing more characters for the same single match does not relaunch`() =
         runTest(dispatcher) {
             val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
-            val vm = viewModel(appRepo = repo)
-            val launched = launchRecorder(vm)
+            val gateway = launchRecorder()
+            val vm = viewModel(appRepo = repo, gateway = gateway)
             advanceUntilIdle()
 
             typeAndWait(vm, "chr")
-            assertEquals(1, launched.size)
+            assertEquals(1, gateway.calls.size)
 
             typeAndWait(vm, "chro")
             typeAndWait(vm, "chrom")
@@ -297,32 +379,32 @@ class LauncherViewModelTest {
             assertEquals(
                 "narrowing further must not reopen the same app",
                 listOf("chrome"),
-                launched.map { it.packageName },
+                gateway.launchedPackages,
             )
         }
 
     @Test
     fun `auto-launch does not fire before the debounce elapses`() = runTest(dispatcher) {
         val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
-        val vm = viewModel(appRepo = repo)
-        val launched = launchRecorder(vm)
+        val gateway = launchRecorder()
+        val vm = viewModel(appRepo = repo, gateway = gateway)
         advanceUntilIdle()
 
         vm.setQuery("chr")
         testScheduler.advanceTimeBy(100)
         testScheduler.runCurrent()
-        assertTrue("must not launch mid-typing", launched.isEmpty())
+        assertTrue("must not launch mid-typing", gateway.calls.isEmpty())
 
         testScheduler.advanceTimeBy(300)
         testScheduler.runCurrent()
-        assertEquals(1, launched.size)
+        assertEquals(1, gateway.calls.size)
     }
 
     @Test
     fun `a restored single-match query never auto-launches`() = runTest(dispatcher) {
         val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
-        val vm = viewModel(appRepo = repo)
-        val launched = launchRecorder(vm)
+        val gateway = launchRecorder()
+        val vm = viewModel(appRepo = repo, gateway = gateway)
         advanceUntilIdle()
 
         // Simulates the query surviving a recreation (a restored ViewModel, or a
@@ -331,28 +413,28 @@ class LauncherViewModelTest {
         testScheduler.advanceTimeBy(1_000)
         advanceUntilIdle()
 
-        assertTrue("restore must never open an app", launched.isEmpty())
+        assertTrue("restore must never open an app", gateway.calls.isEmpty())
     }
 
     @Test
     fun `clearing the query re-arms auto-launch`() = runTest(dispatcher) {
         val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
-        val vm = viewModel(appRepo = repo)
-        val launched = launchRecorder(vm)
+        val gateway = launchRecorder()
+        val vm = viewModel(appRepo = repo, gateway = gateway)
         advanceUntilIdle()
 
         typeAndWait(vm, "chr")
         typeAndWait(vm, "")
         typeAndWait(vm, "chr")
 
-        assertEquals(2, launched.size)
+        assertEquals(2, gateway.calls.size)
     }
 
     @Test
     fun `pressing Home re-arms auto-launch`() = runTest(dispatcher) {
         val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
-        val vm = viewModel(appRepo = repo)
-        val launched = launchRecorder(vm)
+        val gateway = launchRecorder()
+        val vm = viewModel(appRepo = repo, gateway = gateway)
         advanceUntilIdle()
 
         typeAndWait(vm, "chr")
@@ -360,51 +442,51 @@ class LauncherViewModelTest {
         advanceUntilIdle()
         typeAndWait(vm, "chr")
 
-        assertEquals(2, launched.size)
+        assertEquals(2, gateway.calls.size)
     }
 
     @Test
     fun `a query matching several apps does not auto-launch`() = runTest(dispatcher) {
         val repo = FakeAppRepository(listOf(app("Chrome"), app("Chromecast")))
-        val vm = viewModel(appRepo = repo)
-        val launched = launchRecorder(vm)
+        val gateway = launchRecorder()
+        val vm = viewModel(appRepo = repo, gateway = gateway)
         advanceUntilIdle()
 
         typeAndWait(vm, "chrom")
 
-        assertTrue(launched.isEmpty())
+        assertTrue(gateway.calls.isEmpty())
     }
 
     @Test
     fun `a query matching nothing does not auto-launch`() = runTest(dispatcher) {
         val repo = FakeAppRepository(listOf(app("Chrome")))
-        val vm = viewModel(appRepo = repo)
-        val launched = launchRecorder(vm)
+        val gateway = launchRecorder()
+        val vm = viewModel(appRepo = repo, gateway = gateway)
         advanceUntilIdle()
 
         typeAndWait(vm, "zzz")
 
-        assertTrue(launched.isEmpty())
+        assertTrue(gateway.calls.isEmpty())
     }
 
     @Test
     fun `a hidden app is never auto-launched`() = runTest(dispatcher) {
         val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
         val settings = FakeSettingsRepository().apply { setHidden("chrome") }
-        val vm = viewModel(appRepo = repo, settingsRepo = settings)
-        val launched = launchRecorder(vm)
+        val gateway = launchRecorder()
+        val vm = viewModel(appRepo = repo, settingsRepo = settings, gateway = gateway)
         advanceUntilIdle()
 
         typeAndWait(vm, "chrome")
 
-        assertTrue("hidden apps must stay hidden from search", launched.isEmpty())
+        assertTrue("hidden apps must stay hidden from search", gateway.calls.isEmpty())
     }
 
     @Test
     fun `submitting the search launches the top result once`() = runTest(dispatcher) {
         val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
-        val vm = viewModel(appRepo = repo)
-        val launched = launchRecorder(vm)
+        val gateway = launchRecorder()
+        val vm = viewModel(appRepo = repo, gateway = gateway)
         advanceUntilIdle()
 
         vm.setQuery("map")
@@ -415,21 +497,21 @@ class LauncherViewModelTest {
         assertEquals(
             "submitting must not be followed by an auto-launch of the same app",
             listOf("maps"),
-            launched.map { it.packageName },
+            gateway.launchedPackages,
         )
     }
 
     @Test
     fun `submitting an empty search does nothing`() = runTest(dispatcher) {
         val repo = FakeAppRepository(listOf(app("Chrome")))
-        val vm = viewModel(appRepo = repo)
-        val launched = launchRecorder(vm)
+        val gateway = launchRecorder()
+        val vm = viewModel(appRepo = repo, gateway = gateway)
         advanceUntilIdle()
 
         vm.submitSearch()
         advanceUntilIdle()
 
-        assertTrue(launched.isEmpty())
+        assertTrue(gateway.calls.isEmpty())
     }
 
     // ── DATA-2: hiding an app removes it from the home screen ───────────────

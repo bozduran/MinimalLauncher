@@ -31,12 +31,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.minimallauncher.data.AppLauncher
 import com.example.minimallauncher.ui.theme.Accent
 import com.example.minimallauncher.ui.theme.AccentRing
 import com.example.minimallauncher.ui.theme.AppThemes
@@ -50,7 +48,6 @@ import com.example.minimallauncher.ui.theme.TextTertiary
 
 @Composable
 fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
-    val context = LocalContext.current
     val apps by vm.allApps.collectAsStateCompat()
     val favorites by vm.favoriteSet.collectAsStateCompat()
     val hidden by vm.hiddenSet.collectAsStateCompat()
@@ -90,7 +87,7 @@ fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
         LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
             item {
                 ToggleRow("24-hour clock", use24h) { vm.setUse24h(it) }
-                ActionRow("set as default launcher") { AppLauncher.openHomeSettings(context) }
+                ActionRow("set as default launcher") { vm.openHomeSettings() }
                 SectionLabel("theme")
             }
             item {

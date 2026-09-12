@@ -6,6 +6,7 @@ import com.example.minimallauncher.data.AppChangeSource
 import com.example.minimallauncher.data.AppInfo
 import com.example.minimallauncher.data.AppLogger
 import com.example.minimallauncher.data.AppRepository
+import com.example.minimallauncher.data.LauncherGateway
 import com.example.minimallauncher.data.LogcatAppLogger
 import com.example.minimallauncher.data.SettingsRepository
 import com.example.minimallauncher.data.TextNormalizer
@@ -16,7 +17,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -43,6 +43,7 @@ class LauncherViewModel(
     private val appRepo: AppRepository,
     private val settingsRepo: SettingsRepository,
     appChangeSource: AppChangeSource,
+    private val gateway: LauncherGateway,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val logger: AppLogger = LogcatAppLogger(),
@@ -108,10 +109,6 @@ class LauncherViewModel(
      * system-initiated recreate, "don't keep activities") left a restored
      * single-match query with no guard and launched an app the user never asked for.
      */
-    private val _launchRequests = MutableSharedFlow<AppInfo>(extraBufferCapacity = 1)
-    val launchRequests: Flow<AppInfo> = _launchRequests
-
-    /** Counts user-initiated query edits; 0 means the query was never edited this session. */
     private var userEditGeneration = 0
 
     /** Last package auto-launched for the current search, so re-narrowing cannot relaunch it. */
@@ -214,7 +211,7 @@ class LauncherViewModel(
         if (match.packageName == lastAutoLaunchedPackage) return
 
         lastAutoLaunchedPackage = match.packageName
-        _launchRequests.tryEmit(match)
+        launchApp(match)
     }
 
     /**
@@ -269,13 +266,39 @@ class LauncherViewModel(
      * Explicit search submission (keyboard Search/Enter).
      *
      * Opens the top result and records it as launched, so the pending auto-launch
-     * for the same app cannot fire a second time.
+     * for the same app cannot fire a second time. A blank query is a no-op: the
+     * "top result" of an empty search is just whatever app happens to be first.
      */
     fun submitSearch() {
+        if (query.value.isBlank()) return
         val top = drawerApps.value.firstOrNull() ?: return
         if (top.packageName == lastAutoLaunchedPackage) return
         lastAutoLaunchedPackage = top.packageName
-        _launchRequests.tryEmit(top)
+        launchApp(top)
+    }
+
+    // ── outgoing actions (ARCH-3) ───────────────────────────────────────────
+
+    fun launchApp(app: AppInfo) = dispatch("open-app") { gateway.launch(app) }
+
+    fun openAppInfo(packageName: String) = dispatch("app-info") { gateway.openAppInfo(packageName) }
+
+    fun uninstall(packageName: String) = dispatch("uninstall") { gateway.uninstall(packageName) }
+
+    fun openHomeSettings() = dispatch("home-settings") { gateway.openHomeSettings() }
+
+    fun openClock() = dispatch("clock") { gateway.openClock() }
+
+    fun openCalendar() = dispatch("calendar") { gateway.openCalendar() }
+
+    /**
+     * Runs a gateway action and records a failure instead of dropping it.
+     *
+     * The gateway never throws, so a dead intent used to be indistinguishable from
+     * a successful one. Surfacing it to the user is STAB-5.
+     */
+    private fun dispatch(reason: String, block: () -> Result<Unit>) {
+        block().onFailure { error -> logger.record(TAG_GATEWAY, error, "launcher action failed: $reason") }
     }
 
     fun onHomePressed() {
@@ -310,6 +333,7 @@ class LauncherViewModel(
     private companion object {
         const val TAG_APP_LIST = "app-list-load"
         const val TAG_SETTINGS = "settings-write"
+        const val TAG_GATEWAY = "launcher-gateway"
 
         /** Collapses a burst of package-change broadcasts into one enumeration. */
         const val PACKAGE_EVENT_DEBOUNCE_MS = 250L

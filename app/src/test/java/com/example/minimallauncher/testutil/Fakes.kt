@@ -4,6 +4,7 @@ import com.example.minimallauncher.data.AppChangeSource
 import com.example.minimallauncher.data.AppInfo
 import com.example.minimallauncher.data.AppLogger
 import com.example.minimallauncher.data.AppRepository
+import com.example.minimallauncher.data.LauncherGateway
 import com.example.minimallauncher.data.SettingsRepository
 import com.example.minimallauncher.ui.theme.DEFAULT_THEME_KEY
 import kotlinx.coroutines.CompletableDeferred
@@ -159,4 +160,64 @@ class RecordingAppLogger : AppLogger {
     }
 
     fun recordsFor(tag: String): List<Record> = records.filter { it.tag == tag }
+}
+
+/**
+ * [LauncherGateway] that records what the launcher tried to do.
+ *
+ * Asserting on the gateway is stronger than asserting on an internal event flow:
+ * it verifies the actual outgoing action, including which app was opened.
+ */
+class FakeLauncherGateway : LauncherGateway {
+
+    sealed interface Call {
+        data class Launch(val app: AppInfo) : Call
+        data class Details(val packageName: String) : Call
+        data class Uninstall(val packageName: String) : Call
+        data object HomeSettings : Call
+        data object Clock : Call
+        data object Calendar : Call
+    }
+
+    val calls = mutableListOf<Call>()
+
+    /** Package names opened via [launch], in order. */
+    val launchedPackages: List<String> get() = calls.filterIsInstance<Call.Launch>().map { it.app.packageName }
+
+    /** When true, every action returns a failure, as if no activity could handle it. */
+    var failEverything: Boolean = false
+
+    private fun result(): Result<Unit> =
+        if (failEverything) Result.failure(android.content.ActivityNotFoundException("no handler"))
+        else Result.success(Unit)
+
+    override fun launch(app: AppInfo): Result<Unit> {
+        calls += Call.Launch(app)
+        return result()
+    }
+
+    override fun openAppInfo(packageName: String): Result<Unit> {
+        calls += Call.Details(packageName)
+        return result()
+    }
+
+    override fun uninstall(packageName: String): Result<Unit> {
+        calls += Call.Uninstall(packageName)
+        return result()
+    }
+
+    override fun openHomeSettings(): Result<Unit> {
+        calls += Call.HomeSettings
+        return result()
+    }
+
+    override fun openClock(): Result<Unit> {
+        calls += Call.Clock
+        return result()
+    }
+
+    override fun openCalendar(): Result<Unit> {
+        calls += Call.Calendar
+        return result()
+    }
 }

@@ -27,14 +27,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.minimallauncher.data.AppInfo
-import com.example.minimallauncher.data.AppLauncher
 import com.example.minimallauncher.ui.theme.Accent
 import com.example.minimallauncher.ui.theme.Bg
 import com.example.minimallauncher.ui.theme.BorderCol
@@ -47,7 +45,6 @@ import kotlinx.coroutines.delay
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
-    val context = LocalContext.current
     val apps by vm.drawerApps.collectAsStateCompat()
     val query by vm.query.collectAsStateCompat()
     val favorites by vm.favoriteSet.collectAsStateCompat()
@@ -65,13 +62,6 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
         } else {
             keyboard?.hide()
         }
-    }
-
-    // Launches decided by the ViewModel: the single result of a search the user is
-    // typing, or the top result of an explicit submission. The drawer only performs
-    // the effect — the "may I launch, and which app" decision is testable state.
-    LaunchedEffect(vm) {
-        vm.launchRequests.collect { app -> AppLauncher.launch(context, app) }
     }
 
     Column(
@@ -106,7 +96,7 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .combinedClickable(
-                            onClick = { AppLauncher.launch(context, app) },
+                            onClick = { vm.launchApp(app) },
                             onLongClick = { menuApp = app },
                         )
                         .padding(horizontal = 30.dp, vertical = 13.dp),
@@ -121,8 +111,8 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
             isFavorite = app.packageName in favorites,
             onToggleFavorite = { vm.toggleFavorite(app.packageName); menuApp = null },
             onHide = { vm.toggleHidden(app.packageName); menuApp = null },
-            onInfo = { AppLauncher.openAppInfo(context, app.packageName); menuApp = null },
-            onUninstall = { AppLauncher.uninstall(context, app.packageName); menuApp = null },
+            onInfo = { vm.openAppInfo(app.packageName); menuApp = null },
+            onUninstall = { vm.uninstall(app.packageName); menuApp = null },
             onDismiss = { menuApp = null },
         )
     }

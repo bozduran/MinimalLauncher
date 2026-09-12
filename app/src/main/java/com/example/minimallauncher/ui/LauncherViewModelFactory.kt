@@ -3,6 +3,7 @@ package com.example.minimallauncher.ui
 import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.example.minimallauncher.data.AndroidLauncherGateway
 import com.example.minimallauncher.data.DataStoreSettingsRepository
 import com.example.minimallauncher.data.PackageChangeSource
 import com.example.minimallauncher.data.PackageManagerAppRepository
@@ -27,6 +28,7 @@ class LauncherViewModelFactory(
             appRepo = PackageManagerAppRepository(application),
             settingsRepo = DataStoreSettingsRepository(application.dataStore),
             appChangeSource = PackageChangeSource(application),
+            gateway = AndroidLauncherGateway(application),
         ) as T
     }
 }

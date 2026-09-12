@@ -19,13 +19,11 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
-import com.example.minimallauncher.data.AppLauncher
 import com.example.minimallauncher.ui.theme.Bg
 import com.example.minimallauncher.ui.theme.JetBrainsMono
 import com.example.minimallauncher.ui.theme.TextPrimary
@@ -52,7 +50,6 @@ fun HomeScreen(
     vm: LauncherViewModel,
     onOpenSettings: () -> Unit,
 ) {
-    val context = LocalContext.current
     val favorites by vm.favorites.collectAsStateCompat()
     val use24h by vm.use24h.collectAsStateCompat()
     val isLoadingApps by vm.isLoadingApps.collectAsStateCompat()
@@ -81,7 +78,7 @@ fun HomeScreen(
             fontSize = 66.sp,
             lineHeight = 70.sp,
             color = TextPrimary,
-            modifier = Modifier.clickable { AppLauncher.openClock(context) },
+            modifier = Modifier.clickable { vm.openClock() },
         )
         Spacer(Modifier.height(6.dp))
         Text(
@@ -90,7 +87,7 @@ fun HomeScreen(
             fontWeight = FontWeight.Normal,
             fontSize = 15.sp,
             color = TextSecondary,
-            modifier = Modifier.clickable { AppLauncher.openCalendar(context) },
+            modifier = Modifier.clickable { vm.openCalendar() },
         )
 
         Spacer(Modifier.height(54.dp))
@@ -126,7 +123,7 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable { AppLauncher.launch(context, app) }
+                        .clickable { vm.launchApp(app) }
                         .padding(vertical = 11.dp),
                 )
             }
