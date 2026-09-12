@@ -9,9 +9,9 @@
 
 ## Implementation status
 
-Implemented on branch `refactor/user-stories-implementation` (30 stories complete, 3 partial — 33 of 41 touched).
+Implemented on branch `refactor/user-stories-implementation` (31 stories complete, 4 partial — 35 of 41 touched).
 Every commit below is atomic and was verified with `./gradlew assembleDebug assembleRelease testDebugUnitTest`
-plus a green test run before committing. **200 unit tests, 0 failures**, lint clean and blocking.
+plus a green test run before committing. **218 unit tests, 0 failures**, lint clean and blocking.
 
 | Story | Status | Commit |
 | --- | --- | --- |
@@ -48,13 +48,16 @@ plus a green test run before committing. **200 unit tests, 0 failures**, lint cl
 | ARCH-2 single immutable UI state | ✅ done | `5fdb538` |
 | PERF-4 launch window matches the theme | ✅ done | `a2151bb` |
 | PLAT-2 predictive back + back semantics | ✅ done | `9c733d7` |
+| I18N-3 resolve clock/calendar by capability | ✅ done | `bd4f193` |
+| PERF-6 version scheme | ⚠️ partial — versioning done, applicationId needs an owner decision | `ee82ccc` |
 
-**Still open (8 stories):** I18N-3, PERF-3, PERF-5, PERF-6, PLAT-1, QA-3,
-A11Y-1, A11Y-2.
+**Still open (6 stories):** PERF-3, PERF-5, PLAT-1, QA-3, A11Y-1, A11Y-2.
 
-**Partial (3):** DATA-4 and PERF-2 are implemented but need on-device verification
+**Partial (4):** DATA-4 and PERF-2 are implemented but need on-device verification
 (`bmgr backupnow/restore`; an R8 release smoke test). QA-4's CI pipeline is live but
-its instrumented emulator job is not wired up until QA-3 exists.
+its instrumented emulator job is not wired up until QA-3 exists. PERF-6 has the
+version scheme in place but the `applicationId` still needs a domain the project
+owns — see README "Releasing".
 
 **A11Y-3 debt (measured, not yet fixed):** secondary text fails WCAG AA on 25 of 38
 palettes and tertiary text on 37; the accent fails AA-large on 3 (`ayu-light`,
