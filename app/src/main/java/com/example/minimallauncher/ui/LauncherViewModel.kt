@@ -78,36 +78,24 @@ class LauncherViewModel(
             },
     )
 
-    private val allAppsFlow = MutableStateFlow<List<AppInfo>>(emptyList())
-    val allApps: StateFlow<List<AppInfo>> = allAppsFlow.asStateFlow()
+    // ── internal state ──────────────────────────────────────────────────────
+    // Nothing here is exposed directly; the UI reads `uiState` below.
+
+    private val appListState = MutableStateFlow<AppListState>(AppListState.Loading)
 
     /**
-     * Last app-list load failure, or null when the list is current.
+     * A *refresh* failure while a usable list is still on screen.
      *
-     * Surfaced instead of thrown: an uncaught exception inside `scope`
-     * (which only has a `SupervisorJob`, not an exception handler) would kill the
-     * process, and this app *is* the device's home screen.
+     * Kept separate from [AppListState] so a failed refresh retains the last known
+     * good list rather than flashing an error or an empty state.
      */
-    private val _appListError = MutableStateFlow<Throwable?>(null)
-    val appListError: StateFlow<Throwable?> = _appListError.asStateFlow()
-
-    /**
-     * True until the first app-list load attempt finishes.
-     *
-     * Without this the "no favorites yet" onboarding copy was shown during every
-     * cold start, because "0 favorites" and "not loaded yet" were the same value.
-     * Deliberately only true for the *first* load: a later refresh keeps the
-     * previous list on screen rather than flashing an empty state.
-     */
-    private val _isLoadingApps = MutableStateFlow(true)
-    val isLoadingApps: StateFlow<Boolean> = _isLoadingApps.asStateFlow()
+    private val _loadFailure = MutableStateFlow<Throwable?>(null)
 
     /**
      * Non-null while stored settings could not be read (defaults are in use) or a
      * settings write failed. Dismissible by the user.
      */
     private val _settingsError = MutableStateFlow<Throwable?>(null)
-    val settingsError: StateFlow<Throwable?> = _settingsError.asStateFlow()
 
     /** Last failed outgoing action (STAB-5). */
     private val _actionFailure = MutableStateFlow<ActionFailure?>(null)
@@ -132,21 +120,17 @@ class LauncherViewModel(
      * never open an app, which is why [userEditGeneration] starts at 0 for a
      * restored value: only a user edit in this session can trigger auto-launch.
      */
-    val query = MutableStateFlow(savedState.get<String>(KEY_QUERY) ?: "")
+    private val queryFlow = MutableStateFlow(savedState.get<String>(KEY_QUERY) ?: "")
 
-    // Emits when the user presses Home so the UI scrolls back to page 0.
+    // Emits when the user presses Home so the UI scrolls back to page 0. An event,
+    // not state: replaying it after a configuration change would be wrong, which is
+    // why it is the one thing LauncherUiState deliberately does not carry.
     private val _goHome = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val goHome = _goHome
 
     /**
-     * Apps the launcher should open on its own: the single result of a search the
-     * user is still typing, or the top result of an explicit search submission.
-     *
-     * The decision lives here rather than in a composable effect because it depends
-     * on state that outlives the composition. Previously the guard was a `remember`
-     * in the drawer, so anything recreating the composable (process death, a
-     * system-initiated recreate, "don't keep activities") left a restored
-     * single-match query with no guard and launched an app the user never asked for.
+     * Counts user-initiated query edits; 0 means the query was never edited this
+     * session, so a restored query can never open an app.
      */
     private var userEditGeneration = 0
 
@@ -157,38 +141,29 @@ class LauncherViewModel(
         .stateIn(scope, SharingStarted.Eagerly, emptyList())
     private val hiddenPkgs = settingsRepo.hidden
         .stateIn(scope, SharingStarted.Eagerly, emptySet())
-
-    val use24h: StateFlow<Boolean> = settingsRepo.use24h
+    private val use24hFlow = settingsRepo.use24h
         .stateIn(scope, SharingStarted.Eagerly, true)
-
-    val themeKey: StateFlow<String> = settingsRepo.themeKey
+    private val themeKeyFlow = settingsRepo.themeKey
         .stateIn(scope, SharingStarted.Eagerly, DEFAULT_THEME_KEY)
 
-    val favoriteSet: StateFlow<Set<String>> = favoritePkgs
-        .map { it.toSet() }
-        .stateIn(scope, SharingStarted.Eagerly, emptySet())
-
-    val hiddenSet: StateFlow<Set<String>> = hiddenPkgs
-
     /**
-     * Apps shown on the home screen, in the saved favorite order.
+     * Apps shown on the home screen: favorited, not hidden, in the saved order.
      *
-     * Hidden apps are excluded: "hide app" in the drawer means the app should not
-     * be reachable from the launcher, and leaving it on the home screen made the
-     * action mean two different things. The favorite *flag* is deliberately kept
-     * (see [favoriteSet]) so the settings screen still shows the app as favorited
-     * and unhiding restores its previous position.
+     * Hidden apps are excluded because "hide app" in the drawer means the app should
+     * not be reachable from the launcher. The favorite *flag* is deliberately kept
+     * (see [LauncherUiState.favoritePackages]) so the settings screen still shows it
+     * as favorited and unhiding restores its previous position.
      */
-    val favorites: StateFlow<List<AppInfo>> =
-        combine(allAppsFlow, favoritePkgs, hiddenPkgs) { apps, favs, hidden ->
-            val byPkg = apps.associateBy { it.packageName }
+    private val favoritesFlow: StateFlow<List<AppInfo>> =
+        combine(appListState, favoritePkgs, hiddenPkgs) { list, favs, hidden ->
+            val byPkg = list.readyApps.associateBy { it.packageName }
             favs.mapNotNull { byPkg[it] }.filter { it.packageName !in hidden }
         }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     /** Apps shown in the drawer: not hidden, filtered by the (Greek-aware) query. */
-    val drawerApps: StateFlow<List<AppInfo>> =
-        combine(allAppsFlow, hiddenPkgs, query) { apps, hidden, q ->
-            apps.asSequence()
+    private val drawerAppsFlow: StateFlow<List<AppInfo>> =
+        combine(appListState, hiddenPkgs, queryFlow) { list, hidden, q ->
+            list.readyApps.asSequence()
                 .filter { it.packageName !in hidden }
                 // Precomputed keys: only the query is normalised per keystroke.
                 .filter { TextNormalizer.matchesKey(it.searchKey, q) }
@@ -198,6 +173,62 @@ class LauncherViewModel(
             .flowOn(computationDispatcher)
             .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
+    /** The apps in this state, or empty when there is nothing to show. */
+    private val AppListState.readyApps: List<AppInfo>
+        get() = (this as? AppListState.Ready)?.apps ?: emptyList()
+
+    private data class AppSurface(
+        val list: AppListState,
+        val query: String,
+        val favorites: List<AppInfo>,
+        val drawerApps: List<AppInfo>,
+    )
+
+    private data class PreferencesSurface(
+        val favoritePackages: Set<String>,
+        val hiddenPackages: Set<String>,
+        val use24h: Boolean,
+        val themeKey: String,
+    )
+
+    private data class ErrorSurface(
+        val settingsError: Throwable?,
+        val actionFailure: ActionFailure?,
+        val loadFailure: Throwable?,
+    )
+
+    /**
+     * The single state surface the UI renders from (ARCH-2).
+     *
+     * Replaces nine independently-collected flows, so a screen can no longer derive
+     * its favorites from one app list and its drawer from another, and loading and
+     * error states have somewhere to live.
+     */
+    val uiState: StateFlow<LauncherUiState> = combine(
+        combine(appListState, queryFlow, favoritesFlow, drawerAppsFlow) { list, q, favs, drawer ->
+            AppSurface(list, q, favs, drawer)
+        },
+        combine(favoritePkgs, hiddenPkgs, use24hFlow, themeKeyFlow) { favs, hidden, h24, theme ->
+            PreferencesSurface(favs.toSet(), hidden, h24, theme)
+        },
+        combine(_settingsError, _actionFailure, _loadFailure) { settings, action, load ->
+            ErrorSurface(settings, action, load)
+        },
+    ) { app, prefs, errors ->
+        LauncherUiState(
+            appList = app.list,
+            query = app.query,
+            favorites = app.favorites,
+            drawerApps = app.drawerApps,
+            favoritePackages = prefs.favoritePackages,
+            hiddenPackages = prefs.hiddenPackages,
+            use24h = prefs.use24h,
+            themeKey = prefs.themeKey,
+            settingsError = errors.settingsError,
+            actionFailure = errors.actionFailure,
+            loadFailure = errors.loadFailure,
+        )
+    }.stateIn(scope, SharingStarted.Eagerly, LauncherUiState())
     init {
         // Single load pipeline. `collectLatest` cancels the in-flight load when a
         // newer request arrives, which is what guarantees a slow earlier load can
@@ -229,7 +260,7 @@ class LauncherViewModel(
         // open it — once. `combine` keeps the query and the matches consistent, and
         // the debounce keeps it from firing mid-word.
         scope.launch {
-            combine(query, drawerApps) { q, matches -> q to matches }
+            combine(queryFlow, drawerAppsFlow) { q, matches -> q to matches }
                 .debounce(SEARCH_DEBOUNCE_MS)
                 .collect { (q, matches) -> considerAutoLaunch(q, matches) }
         }
@@ -266,9 +297,8 @@ class LauncherViewModel(
     private suspend fun loadAppsOnce() {
         try {
             val apps = withContext(ioDispatcher) { appRepo.loadApps() }
-            allAppsFlow.value = apps
-            _appListError.value = null
-            _isLoadingApps.value = false
+            appListState.value = AppListState.Ready(apps)
+            _loadFailure.value = null
             pruneStaleSettings(apps)
         } catch (cancelled: CancellationException) {
             // Superseded by a newer request — not a failure, and not "loaded":
@@ -277,8 +307,11 @@ class LauncherViewModel(
         } catch (error: Exception) {
             // Keep the last known good list on screen and report the failure.
             logger.record(TAG_APP_LIST, error, "app list load failed")
-            _appListError.value = error
-            _isLoadingApps.value = false
+            _loadFailure.value = error
+            // Only replace Ready when there is nothing usable to keep on screen.
+            if (appListState.value !is AppListState.Ready) {
+                appListState.value = AppListState.Error(error)
+            }
         }
     }
 
@@ -308,7 +341,7 @@ class LauncherViewModel(
 
     /** Clears the app-list error without retrying. */
     fun dismissAppListError() {
-        _appListError.value = null
+        _loadFailure.value = null
     }
 
     /** Retries the app list load after a failure. */
@@ -320,7 +353,7 @@ class LauncherViewModel(
     }
 
     fun setQuery(q: String) {
-        if (q == query.value) return
+        if (q == queryFlow.value) return
         userEditGeneration++
         if (q.isBlank()) lastAutoLaunchedPackage = null
         persistQuery(q)
@@ -334,8 +367,8 @@ class LauncherViewModel(
      * "top result" of an empty search is just whatever app happens to be first.
      */
     fun submitSearch() {
-        if (query.value.isBlank()) return
-        val top = drawerApps.value.firstOrNull() ?: return
+        if (queryFlow.value.isBlank()) return
+        val top = drawerAppsFlow.value.firstOrNull() ?: return
         if (top.packageName == lastAutoLaunchedPackage) return
         lastAutoLaunchedPackage = top.packageName
         launchApp(top)
@@ -415,7 +448,7 @@ class LauncherViewModel(
     }
 
     private fun persistQuery(value: String) {
-        query.value = value
+        queryFlow.value = value
         savedState[KEY_QUERY] = value
     }
 

@@ -75,7 +75,7 @@ class LauncherViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals(listOf("Chrome", "Maps"), vm.allApps.value.map { it.label })
+        assertEquals(listOf("Chrome", "Maps"), vm.uiState.value.apps.map { it.label })
         assertEquals(1, repo.loadCount)
     }
 
@@ -92,13 +92,13 @@ class LauncherViewModelTest {
 
         advanceUntilIdle()
         assertEquals(1, repo.loadCount)
-        assertEquals(1, vm.allApps.value.size)
+        assertEquals(1, vm.uiState.value.apps.size)
     }
 
     @Test
     fun `app list is empty before the first load completes`() = runTest(dispatcher) {
         val vm = viewModel(appRepo = FakeAppRepository(listOf(app("Chrome"))))
-        assertTrue(vm.allApps.value.isEmpty())
+        assertTrue(vm.uiState.value.apps.isEmpty())
     }
 
     @Test
@@ -114,7 +114,7 @@ class LauncherViewModelTest {
         advanceUntilIdle()
 
         assertEquals(2, repo.loadCount)
-        assertEquals(listOf("Chrome", "Maps"), vm.allApps.value.map { it.label })
+        assertEquals(listOf("Chrome", "Maps"), vm.uiState.value.apps.map { it.label })
     }
 
     @Test
@@ -127,7 +127,7 @@ class LauncherViewModelTest {
         vm.refresh()
         advanceUntilIdle()
 
-        assertEquals(2, vm.allApps.value.size)
+        assertEquals(2, vm.uiState.value.apps.size)
     }
 
     // ── DATA-3: prune settings for uninstalled packages ─────────────────────
@@ -220,7 +220,7 @@ class LauncherViewModelTest {
         assertEquals(
             "the old favorite must not come back with the package",
             listOf("Chrome"),
-            vm.favorites.value.map { it.label },
+            vm.uiState.value.favorites.map { it.label },
         )
     }
 
@@ -235,7 +235,7 @@ class LauncherViewModelTest {
 
         advanceUntilIdle()
 
-        assertNotNull(vm.settingsError.value)
+        assertNotNull(vm.uiState.value.settingsError)
     }
 
     // ── STAB-5: failed actions are visible, not silent ──────────────────────
@@ -249,7 +249,7 @@ class LauncherViewModelTest {
         vm.launchApp(app("Chrome"))
         vm.openClock()
 
-        assertNull(vm.actionFailure.value)
+        assertNull(vm.uiState.value.actionFailure)
     }
 
     @Test
@@ -259,8 +259,9 @@ class LauncherViewModelTest {
         advanceUntilIdle()
 
         vm.launchApp(app("Chrome", packageName = "com.example.chrome"))
+        advanceUntilIdle()
 
-        val failure = vm.actionFailure.value
+        val failure = vm.uiState.value.actionFailure
         assertNotNull(failure)
         assertEquals(LauncherAction.OpenApp, failure!!.action)
         assertEquals("Chrome", failure.subject)
@@ -283,7 +284,9 @@ class LauncherViewModelTest {
         for ((trigger, expected) in cases) {
             vm.dismissActionFailure()
             trigger()
-            assertEquals(expected, vm.actionFailure.value?.action)
+            // uiState is derived, so it settles on the next scheduler pass.
+            advanceUntilIdle()
+            assertEquals(expected, vm.uiState.value.actionFailure?.action)
         }
     }
 
@@ -293,11 +296,13 @@ class LauncherViewModelTest {
         val vm = viewModel(gateway = gateway)
         advanceUntilIdle()
         vm.openClock()
-        assertNotNull(vm.actionFailure.value)
+        advanceUntilIdle()
+        assertNotNull(vm.uiState.value.actionFailure)
 
         vm.dismissActionFailure()
+        advanceUntilIdle()
 
-        assertNull(vm.actionFailure.value)
+        assertNull(vm.uiState.value.actionFailure)
     }
 
     @Test
@@ -321,8 +326,9 @@ class LauncherViewModelTest {
         advanceUntilIdle()
 
         typeAndWait(vm, "chr")
+        advanceUntilIdle()
 
-        assertEquals(LauncherAction.OpenApp, vm.actionFailure.value?.action)
+        assertEquals(LauncherAction.OpenApp, vm.uiState.value.actionFailure?.action)
     }
 
     // ── ARCH-3: all outgoing actions go through the gateway ─────────────────
@@ -334,7 +340,7 @@ class LauncherViewModelTest {
         val vm = viewModel(appRepo = repo, gateway = gateway)
         advanceUntilIdle()
 
-        vm.launchApp(vm.drawerApps.value.first { it.packageName == "maps" })
+        vm.launchApp(vm.uiState.value.drawerApps.first { it.packageName == "maps" })
 
         assertEquals(listOf("maps"), gateway.launchedPackages)
     }
@@ -426,11 +432,11 @@ class LauncherViewModelTest {
             assertEquals(
                 "filtering must not run inline on the main thread",
                 listOf("Chrome", "Maps"),
-                vm.drawerApps.value.map { it.label },
+                vm.uiState.value.drawerApps.map { it.label },
             )
 
             testScheduler.advanceUntilIdle()
-            assertEquals(listOf("Chrome"), vm.drawerApps.value.map { it.label })
+            assertEquals(listOf("Chrome"), vm.uiState.value.drawerApps.map { it.label })
         }
 
     @Test
@@ -442,15 +448,15 @@ class LauncherViewModelTest {
 
             vm.setQuery("αθηνα")
             advanceUntilIdle()
-            assertEquals(listOf("Αθήνα"), vm.drawerApps.value.map { it.label })
+            assertEquals(listOf("Αθήνα"), vm.uiState.value.drawerApps.map { it.label })
 
             vm.setQuery("cafe")
             advanceUntilIdle()
-            assertEquals(listOf("Café"), vm.drawerApps.value.map { it.label })
+            assertEquals(listOf("Café"), vm.uiState.value.drawerApps.map { it.label })
 
             vm.setQuery("CHRO")
             advanceUntilIdle()
-            assertEquals(listOf("Chrome"), vm.drawerApps.value.map { it.label })
+            assertEquals(listOf("Chrome"), vm.uiState.value.drawerApps.map { it.label })
         }
 
     @Test
@@ -466,7 +472,7 @@ class LauncherViewModelTest {
     fun `the app list reports loading before the first load completes`() = runTest(dispatcher) {
         val vm = viewModel(appRepo = FakeAppRepository(listOf(app("Chrome"))))
 
-        assertTrue(vm.isLoadingApps.value)
+        assertTrue(vm.uiState.value.isLoadingApps)
     }
 
     @Test
@@ -475,7 +481,7 @@ class LauncherViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals(false, vm.isLoadingApps.value)
+        assertEquals(false, vm.uiState.value.isLoadingApps)
     }
 
     @Test
@@ -485,8 +491,8 @@ class LauncherViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals(false, vm.isLoadingApps.value)
-        assertNotNull(vm.appListError.value)
+        assertEquals(false, vm.uiState.value.isLoadingApps)
+        assertNotNull(vm.uiState.value.appListError)
     }
 
     @Test
@@ -494,17 +500,17 @@ class LauncherViewModelTest {
         val repo = FakeAppRepository(listOf(app("Chrome")))
         val vm = viewModel(appRepo = repo)
         advanceUntilIdle()
-        assertEquals(false, vm.isLoadingApps.value)
+        assertEquals(false, vm.uiState.value.isLoadingApps)
 
         vm.refresh()
         testScheduler.advanceTimeBy(300)
         testScheduler.runCurrent()
 
-        assertEquals("refresh must not flash an empty state", false, vm.isLoadingApps.value)
+        assertEquals("refresh must not flash an empty state", false, vm.uiState.value.isLoadingApps)
         assertEquals(
             "the previously loaded list stays visible across a refresh",
             listOf("Chrome"),
-            vm.allApps.value.map { it.label },
+            vm.uiState.value.apps.map { it.label },
         )
     }
 
@@ -517,7 +523,7 @@ class LauncherViewModelTest {
             val gate1 = repo.gateNextLoad()
             val gate2 = repo.gateNextLoad()
             testScheduler.runCurrent() // initial load starts, blocked on gate1
-            assertTrue(vm.isLoadingApps.value)
+            assertTrue(vm.uiState.value.isLoadingApps)
 
             vm.refresh() // supersedes the first load
             testScheduler.advanceTimeBy(300)
@@ -525,15 +531,112 @@ class LauncherViewModelTest {
 
             assertTrue(
                 "cancelling a load must not report the list as loaded",
-                vm.isLoadingApps.value,
+                vm.uiState.value.isLoadingApps,
             )
 
             gate1.complete(Unit)
             gate2.complete(Unit)
             advanceUntilIdle()
 
-            assertEquals(false, vm.isLoadingApps.value)
-            assertEquals(listOf("Chrome"), vm.allApps.value.map { it.label })
+            assertEquals(false, vm.uiState.value.isLoadingApps)
+            assertEquals(listOf("Chrome"), vm.uiState.value.apps.map { it.label })
+        }
+
+    // ── ARCH-2: one state, with loading distinguished from empty ────────────
+
+    @Test
+    fun `the initial state is Loading, not an empty list`() = runTest(dispatcher) {
+        val vm = viewModel(appRepo = FakeAppRepository(listOf(app("Chrome"))))
+
+        assertEquals(AppListState.Loading, vm.uiState.value.appList)
+        assertTrue(vm.uiState.value.isLoadingApps)
+    }
+
+    @Test
+    fun `a successful load moves the app list to Ready`() = runTest(dispatcher) {
+        val vm = viewModel(appRepo = FakeAppRepository(listOf(app("Chrome"))))
+
+        advanceUntilIdle()
+
+        assertEquals(AppListState.Ready(listOf(app("Chrome"))), vm.uiState.value.appList)
+        assertEquals(false, vm.uiState.value.isLoadingApps)
+        assertNull(vm.uiState.value.appListError)
+    }
+
+    @Test
+    fun `a failed first load reports Error with its cause`() = runTest(dispatcher) {
+        val boom = RuntimeException("boom")
+        val vm = viewModel(appRepo = FakeAppRepository().apply { failure = boom })
+
+        advanceUntilIdle()
+
+        val state = vm.uiState.value.appList
+        assertTrue("expected Error, was $state", state is AppListState.Error)
+        assertEquals("boom", (state as AppListState.Error).cause.message)
+        // The same failure is reachable through the convenience accessor the UI uses.
+        assertEquals("boom", vm.uiState.value.appListError?.message)
+        assertEquals(false, vm.uiState.value.isLoadingApps)
+    }
+
+    @Test
+    fun `a failed refresh keeps the last known good list instead of an error`() =
+        runTest(dispatcher) {
+            val repo = FakeAppRepository(listOf(app("Chrome")))
+            val vm = viewModel(appRepo = repo)
+            advanceUntilIdle()
+
+            repo.failure = RuntimeException("boom")
+            vm.refresh()
+            advanceUntilIdle()
+
+            // Ready is retained so the user keeps their apps; the failure is
+            // reported alongside rather than replacing the list.
+            assertEquals(AppListState.Ready(listOf(app("Chrome"))), vm.uiState.value.appList)
+            assertNotNull(vm.uiState.value.appListError)
+            assertNotNull(vm.uiState.value.loadFailure)
+        }
+
+    @Test
+    fun `one snapshot carries every screen's data`() = runTest(dispatcher) {
+        val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+        val settings = FakeSettingsRepository().apply {
+            setFavorites("maps")
+            setHidden("chrome")
+            setThemeKey("nord")
+            primeUse24h(false)
+        }
+        val vm = viewModel(appRepo = repo, settingsRepo = settings)
+
+        advanceUntilIdle()
+
+        // Everything a screen needs comes from a single emission, so no screen can
+        // render data derived from two different app lists.
+        val state = vm.uiState.value
+        assertEquals(listOf("Maps"), state.favorites.map { it.label })
+        // chrome is hidden, so the drawer shows only Maps.
+        assertEquals(listOf("Maps"), state.drawerApps.map { it.label })
+        assertEquals(setOf("maps"), state.favoritePackages)
+        assertEquals(setOf("chrome"), state.hiddenPackages)
+        assertEquals("nord", state.themeKey)
+        assertEquals(false, state.use24h)
+    }
+
+    @Test
+    fun `every screen's data agrees on the same favorite and hidden sets`() =
+        runTest(dispatcher) {
+            val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
+            val settings = FakeSettingsRepository().apply {
+                setFavorites("chrome", "maps")
+                setHidden("maps")
+            }
+            val vm = viewModel(appRepo = repo, settingsRepo = settings)
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertEquals(listOf("Chrome"), state.favorites.map { it.label })
+            assertEquals(listOf("Chrome"), state.drawerApps.map { it.label })
+            // The flag is retained while hidden so settings can still show it as favorited.
+            assertEquals(setOf("chrome", "maps"), state.favoritePackages)
         }
 
     // ── ARCH-6: no failure escapes unobserved ───────────────────────────────
@@ -576,7 +679,7 @@ class LauncherViewModelTest {
         repo.apps = listOf(app("Chrome"), app("Maps"))
         vm.refresh()
         advanceUntilIdle()
-        assertEquals(2, vm.allApps.value.size)
+        assertEquals(2, vm.uiState.value.apps.size)
     }
 
     // ── PLAT-3: survive process death ───────────────────────────────────────
@@ -594,8 +697,8 @@ class LauncherViewModelTest {
         val restored = viewModel(appRepo = repo, savedState = handle)
         advanceUntilIdle()
 
-        assertEquals("chr", restored.query.value)
-        assertEquals(listOf("Chrome"), restored.drawerApps.value.map { it.label })
+        assertEquals("chr", restored.uiState.value.query)
+        assertEquals(listOf("Chrome"), restored.uiState.value.drawerApps.map { it.label })
     }
 
     @Test
@@ -609,7 +712,7 @@ class LauncherViewModelTest {
         testScheduler.advanceTimeBy(1_000)
         advanceUntilIdle()
 
-        assertEquals("chr", restored.query.value)
+        assertEquals("chr", restored.uiState.value.query)
         assertTrue("restoring a search must never open an app", gateway.calls.isEmpty())
     }
 
@@ -621,8 +724,8 @@ class LauncherViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals("", vm.query.value)
-        assertEquals(listOf("Chrome"), vm.drawerApps.value.map { it.label })
+        assertEquals("", vm.uiState.value.query)
+        assertEquals(listOf("Chrome"), vm.uiState.value.drawerApps.map { it.label })
     }
 
     @Test
@@ -637,7 +740,7 @@ class LauncherViewModelTest {
         advanceUntilIdle()
 
         assertEquals("", handle.get<String>("query"))
-        assertEquals("", viewModel(appRepo = repo, savedState = handle).query.value)
+        assertEquals("", viewModel(appRepo = repo, savedState = handle).uiState.value.query)
     }
 
     @Test
@@ -683,8 +786,8 @@ class LauncherViewModelTest {
         vm.onSearchFocusFailed(IllegalStateException("no focus target"))
         advanceUntilIdle()
 
-        assertEquals(listOf("Chrome"), vm.drawerApps.value.map { it.label })
-        assertNull(vm.appListError.value)
+        assertEquals(listOf("Chrome"), vm.uiState.value.drawerApps.map { it.label })
+        assertNull(vm.uiState.value.appListError)
     }
 
     // ── DRAW-3: consistent return-to-home ───────────────────────────────────
@@ -696,13 +799,13 @@ class LauncherViewModelTest {
         advanceUntilIdle()
         vm.setQuery("chr")
         advanceUntilIdle()
-        assertEquals(1, vm.drawerApps.value.size)
+        assertEquals(1, vm.uiState.value.drawerApps.size)
 
         vm.onReturnToHome()
         advanceUntilIdle()
 
-        assertEquals("", vm.query.value)
-        assertEquals(3, vm.drawerApps.value.size)
+        assertEquals("", vm.uiState.value.query)
+        assertEquals(3, vm.uiState.value.drawerApps.size)
     }
 
     @Test
@@ -718,8 +821,8 @@ class LauncherViewModelTest {
         vm.onReturnToHome()
         advanceUntilIdle()
 
-        assertEquals("", vm.query.value)
-        assertEquals(listOf("Chrome"), vm.drawerApps.value.map { it.label })
+        assertEquals("", vm.uiState.value.query)
+        assertEquals(listOf("Chrome"), vm.uiState.value.drawerApps.map { it.label })
     }
 
     @Test
@@ -735,7 +838,7 @@ class LauncherViewModelTest {
             vm.onReturnToHome()
             advanceUntilIdle()
 
-            assertEquals(listOf("Maps"), vm.favorites.value.map { it.label })
+            assertEquals(listOf("Maps"), vm.uiState.value.favorites.map { it.label })
         }
 
     // ── DRAW-1: auto-launch only on deliberate input, exactly once ──────────
@@ -803,15 +906,15 @@ class LauncherViewModelTest {
     fun `a restored single-match query never auto-launches`() = runTest(dispatcher) {
         val repo = FakeAppRepository(listOf(app("Chrome"), app("Maps")))
         val gateway = launchRecorder()
-        val vm = viewModel(appRepo = repo, gateway = gateway)
-        advanceUntilIdle()
-
-        // Simulates the query surviving a recreation (a restored ViewModel, or a
-        // future SavedStateHandle restore) without a user edit in this session.
-        vm.query.value = "chr"
+        // Simulates the query surviving a recreation without a user edit in this
+        // session: the handle carries it, the ViewModel is brand new.
+        val handle = androidx.lifecycle.SavedStateHandle()
+        handle["query"] = "chr"
+        val vm = viewModel(appRepo = repo, gateway = gateway, savedState = handle)
         testScheduler.advanceTimeBy(1_000)
         advanceUntilIdle()
 
+        assertEquals("chr", vm.uiState.value.query)
         assertTrue("restore must never open an app", gateway.calls.isEmpty())
     }
 
@@ -929,7 +1032,7 @@ class LauncherViewModelTest {
         assertEquals(
             "hide must mean hidden everywhere, not just in the drawer",
             listOf("Chrome"),
-            vm.favorites.value.map { it.label },
+            vm.uiState.value.favorites.map { it.label },
         )
     }
 
@@ -945,7 +1048,7 @@ class LauncherViewModelTest {
 
         // The settings screen still renders Maps as favorited so unhiding can
         // restore the previous ordering.
-        assertEquals(setOf("chrome", "maps"), vm.favoriteSet.value)
+        assertEquals(setOf("chrome", "maps"), vm.uiState.value.favoritePackages)
     }
 
     @Test
@@ -958,14 +1061,14 @@ class LauncherViewModelTest {
             }
             val vm = viewModel(appRepo = repo, settingsRepo = settings)
             advanceUntilIdle()
-            assertEquals(listOf("Photos", "Chrome"), vm.favorites.value.map { it.label })
+            assertEquals(listOf("Photos", "Chrome"), vm.uiState.value.favorites.map { it.label })
 
             vm.toggleHidden("maps")
             advanceUntilIdle()
 
             assertEquals(
                 listOf("Photos", "Maps", "Chrome"),
-                vm.favorites.value.map { it.label },
+                vm.uiState.value.favorites.map { it.label },
             )
         }
 
@@ -979,8 +1082,8 @@ class LauncherViewModelTest {
         vm.toggleHidden("maps")
         advanceUntilIdle()
 
-        assertEquals(listOf("Chrome"), vm.favorites.value.map { it.label })
-        assertEquals(listOf("Chrome"), vm.drawerApps.value.map { it.label })
+        assertEquals(listOf("Chrome"), vm.uiState.value.favorites.map { it.label })
+        assertEquals(listOf("Chrome"), vm.uiState.value.drawerApps.map { it.label })
     }
 
     // ── STAB-3: single-flight, conflated reloads ────────────────────────────
@@ -993,7 +1096,7 @@ class LauncherViewModelTest {
         testScheduler.runCurrent()
 
         assertEquals("first load must start immediately", 1, repo.loadCount)
-        assertEquals(listOf("Chrome"), vm.allApps.value.map { it.label })
+        assertEquals(listOf("Chrome"), vm.uiState.value.apps.map { it.label })
     }
 
     @Test
@@ -1028,7 +1131,7 @@ class LauncherViewModelTest {
         val repo = FakeAppRepository(listOf(app("Stale")))
         val vm = viewModel(appRepo = repo)
         advanceUntilIdle()
-        assertEquals(listOf("Stale"), vm.allApps.value.map { it.label })
+        assertEquals(listOf("Stale"), vm.uiState.value.apps.map { it.label })
 
         // Load A starts after its debounce and blocks on the gate.
         val gateA = repo.gateNextLoad()
@@ -1052,7 +1155,7 @@ class LauncherViewModelTest {
         assertEquals(
             "the superseded load must not publish over the newer one",
             listOf("Fresh"),
-            vm.allApps.value.map { it.label },
+            vm.uiState.value.apps.map { it.label },
         )
     }
 
@@ -1076,9 +1179,9 @@ class LauncherViewModelTest {
         gate.complete(Unit)
         advanceUntilIdle()
 
-        assertNull("cancellation is not a failure", vm.appListError.value)
+        assertNull("cancellation is not a failure", vm.uiState.value.appListError)
         assertTrue(logger.records.isEmpty())
-        assertEquals(listOf("Fresh"), vm.allApps.value.map { it.label })
+        assertEquals(listOf("Fresh"), vm.uiState.value.apps.map { it.label })
     }
 
     @Test
@@ -1115,7 +1218,7 @@ class LauncherViewModelTest {
 
         advanceUntilIdle()
 
-        assertNotNull("load failure must be surfaced to the UI", vm.appListError.value)
+        assertNotNull("load failure must be surfaced to the UI", vm.uiState.value.appListError)
     }
 
     @Test
@@ -1123,7 +1226,7 @@ class LauncherViewModelTest {
         val repo = FakeAppRepository(listOf(app("Chrome")))
         val vm = viewModel(appRepo = repo)
         advanceUntilIdle()
-        assertEquals(1, vm.allApps.value.size)
+        assertEquals(1, vm.uiState.value.apps.size)
 
         repo.failure = RuntimeException("PackageManager failed")
         vm.refresh()
@@ -1132,7 +1235,7 @@ class LauncherViewModelTest {
         assertEquals(
             "the previously loaded list must survive a failed refresh",
             listOf("Chrome"),
-            vm.allApps.value.map { it.label },
+            vm.uiState.value.apps.map { it.label },
         )
     }
 
@@ -1141,15 +1244,15 @@ class LauncherViewModelTest {
         val repo = FakeAppRepository().apply { failure = RuntimeException("PackageManager failed") }
         val vm = viewModel(appRepo = repo)
         advanceUntilIdle()
-        assertNotNull(vm.appListError.value)
+        assertNotNull(vm.uiState.value.appListError)
 
         repo.failure = null
         repo.apps = listOf(app("Chrome"), app("Maps"))
         vm.retryLoad()
         advanceUntilIdle()
 
-        assertNull(vm.appListError.value)
-        assertEquals(listOf("Chrome", "Maps"), vm.allApps.value.map { it.label })
+        assertNull(vm.uiState.value.appListError)
+        assertEquals(listOf("Chrome", "Maps"), vm.uiState.value.apps.map { it.label })
     }
 
     @Test
@@ -1157,14 +1260,14 @@ class LauncherViewModelTest {
         val repo = FakeAppRepository().apply { failure = RuntimeException("boom") }
         val vm = viewModel(appRepo = repo)
         advanceUntilIdle()
-        assertNotNull(vm.appListError.value)
+        assertNotNull(vm.uiState.value.appListError)
 
         repo.failure = null
         repo.apps = listOf(app("Chrome"))
         vm.refresh()
         advanceUntilIdle()
 
-        assertNull(vm.appListError.value)
+        assertNull(vm.uiState.value.appListError)
     }
 
     @Test
@@ -1190,8 +1293,8 @@ class LauncherViewModelTest {
         changes.emitChange()
         advanceUntilIdle()
 
-        assertNotNull(vm.appListError.value)
-        assertEquals(listOf("Chrome"), vm.allApps.value.map { it.label })
+        assertNotNull(vm.uiState.value.appListError)
+        assertEquals(listOf("Chrome"), vm.uiState.value.apps.map { it.label })
     }
 
     // ── favorites ───────────────────────────────────────────────────────────
@@ -1204,7 +1307,7 @@ class LauncherViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals(listOf("Photos", "Chrome"), vm.favorites.value.map { it.label })
+        assertEquals(listOf("Photos", "Chrome"), vm.uiState.value.favorites.map { it.label })
     }
 
     @Test
@@ -1215,7 +1318,7 @@ class LauncherViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals(listOf("chrome"), vm.favorites.value.map { it.packageName })
+        assertEquals(listOf("chrome"), vm.uiState.value.favorites.map { it.packageName })
     }
 
     @Test
@@ -1224,7 +1327,7 @@ class LauncherViewModelTest {
         val vm = viewModel(settingsRepo = settings)
         advanceUntilIdle()
 
-        assertEquals(setOf("a", "b"), vm.favoriteSet.value)
+        assertEquals(setOf("a", "b"), vm.uiState.value.favoritePackages)
     }
 
     @Test
@@ -1249,7 +1352,7 @@ class LauncherViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals(listOf("Chrome"), vm.drawerApps.value.map { it.label })
+        assertEquals(listOf("Chrome"), vm.uiState.value.drawerApps.map { it.label })
     }
 
     @Test
@@ -1258,7 +1361,7 @@ class LauncherViewModelTest {
         val vm = viewModel(settingsRepo = settings)
         advanceUntilIdle()
 
-        assertEquals(setOf("maps"), vm.hiddenSet.value)
+        assertEquals(setOf("maps"), vm.uiState.value.hiddenPackages)
     }
 
     @Test
@@ -1285,7 +1388,7 @@ class LauncherViewModelTest {
         vm.setQuery("")
         advanceUntilIdle()
 
-        assertEquals(listOf("Chrome"), vm.drawerApps.value.map { it.label })
+        assertEquals(listOf("Chrome"), vm.uiState.value.drawerApps.map { it.label })
     }
 
     @Test
@@ -1297,7 +1400,7 @@ class LauncherViewModelTest {
         vm.setQuery("CHRO")
         advanceUntilIdle()
 
-        assertEquals(listOf("Chrome"), vm.drawerApps.value.map { it.label })
+        assertEquals(listOf("Chrome"), vm.uiState.value.drawerApps.map { it.label })
     }
 
     @Test
@@ -1309,7 +1412,7 @@ class LauncherViewModelTest {
         vm.setQuery("αθηνα")
         advanceUntilIdle()
 
-        assertEquals(listOf("Αθήνα"), vm.drawerApps.value.map { it.label })
+        assertEquals(listOf("Αθήνα"), vm.uiState.value.drawerApps.map { it.label })
     }
 
     @Test
@@ -1321,7 +1424,7 @@ class LauncherViewModelTest {
         vm.setQuery("zzz")
         advanceUntilIdle()
 
-        assertTrue(vm.drawerApps.value.isEmpty())
+        assertTrue(vm.uiState.value.drawerApps.isEmpty())
     }
 
     @Test
@@ -1331,13 +1434,13 @@ class LauncherViewModelTest {
         advanceUntilIdle()
         vm.setQuery("chr")
         advanceUntilIdle()
-        assertEquals(1, vm.drawerApps.value.size)
+        assertEquals(1, vm.uiState.value.drawerApps.size)
 
         vm.onReturnToHome()
         advanceUntilIdle()
 
-        assertEquals("", vm.query.value)
-        assertEquals(2, vm.drawerApps.value.size)
+        assertEquals("", vm.uiState.value.query)
+        assertEquals(2, vm.uiState.value.drawerApps.size)
     }
 
     @Test
@@ -1365,7 +1468,7 @@ class LauncherViewModelTest {
         vm.toggleFavorite("com.example.chrome")
         advanceUntilIdle()
 
-        assertNotNull("write failure must be surfaced", vm.settingsError.value)
+        assertNotNull("write failure must be surfaced", vm.uiState.value.settingsError)
     }
 
     @Test
@@ -1383,7 +1486,7 @@ class LauncherViewModelTest {
             listOf("existing"),
             settings.currentFavorites,
         )
-        assertEquals(setOf("existing"), vm.favoriteSet.value)
+        assertEquals(setOf("existing"), vm.uiState.value.favoritePackages)
     }
 
     @Test
@@ -1407,7 +1510,7 @@ class LauncherViewModelTest {
 
         advanceUntilIdle()
 
-        assertNotNull(vm.settingsError.value)
+        assertNotNull(vm.uiState.value.settingsError)
     }
 
     @Test
@@ -1415,12 +1518,12 @@ class LauncherViewModelTest {
         val settings = FakeSettingsRepository().apply { failReads(java.io.IOException("corrupt")) }
         val vm = viewModel(settingsRepo = settings)
         advanceUntilIdle()
-        assertNotNull(vm.settingsError.value)
+        assertNotNull(vm.uiState.value.settingsError)
 
         vm.dismissSettingsError()
         advanceUntilIdle()
 
-        assertNull(vm.settingsError.value)
+        assertNull(vm.uiState.value.settingsError)
     }
 
     @Test
@@ -1433,7 +1536,7 @@ class LauncherViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals(listOf("Chrome"), vm.drawerApps.value.map { it.label })
+        assertEquals(listOf("Chrome"), vm.uiState.value.drawerApps.map { it.label })
     }
 
     // ── settings pass-through ───────────────────────────────────────────────
@@ -1443,12 +1546,12 @@ class LauncherViewModelTest {
         val settings = FakeSettingsRepository()
         val vm = viewModel(settingsRepo = settings)
         advanceUntilIdle()
-        assertTrue(vm.use24h.value)
+        assertTrue(vm.uiState.value.use24h)
 
         vm.setUse24h(false)
         advanceUntilIdle()
 
-        assertEquals(false, vm.use24h.value)
+        assertEquals(false, vm.uiState.value.use24h)
         assertEquals(false, settings.currentUse24h)
     }
 
@@ -1457,12 +1560,12 @@ class LauncherViewModelTest {
         val settings = FakeSettingsRepository()
         val vm = viewModel(settingsRepo = settings)
         advanceUntilIdle()
-        assertEquals(com.example.minimallauncher.ui.theme.DEFAULT_THEME_KEY, vm.themeKey.value)
+        assertEquals(com.example.minimallauncher.ui.theme.DEFAULT_THEME_KEY, vm.uiState.value.themeKey)
 
         vm.setTheme("dracula")
         advanceUntilIdle()
 
-        assertEquals("dracula", vm.themeKey.value)
+        assertEquals("dracula", vm.uiState.value.themeKey)
         assertEquals("dracula", settings.currentTheme)
     }
 }

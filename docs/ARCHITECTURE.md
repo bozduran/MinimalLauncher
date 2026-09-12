@@ -77,6 +77,41 @@ factory over introducing a framework.
 `LauncherViewModel` holds all launcher state and performs all side effects. The
 composables are pure functions of collected state plus dispatched intents.
 
+### One state object, not nine flows
+
+The UI collects exactly one `StateFlow<LauncherUiState>`. Screens read fields from
+that snapshot; none of the internal flows is public. This matters for correctness,
+not tidiness: with nine independently-collected flows a screen could derive its
+favorites list from one app list and its drawer from another, and there was nowhere
+to express "loading" or "this failed".
+
+`LauncherUiState.appList` is a sealed `AppListState`:
+
+- `Loading` — no attempt has finished yet, so the UI must not claim "no favorites
+  yet". This is what stopped the onboarding copy appearing on every cold start.
+- `Ready(apps)` — a usable list.
+- `Error(cause)` — the *first* load failed and there is nothing to show.
+
+A failure while a list is **already** on screen keeps `Ready` and reports through
+`LauncherUiState.loadFailure` instead, so a failed refresh never replaces the user's
+apps with an error or an empty state.
+
+One-shot events are deliberately excluded: `goHome` stays a `SharedFlow` because
+"scroll to page 0" is an event, and replaying it after a configuration change would
+be wrong.
+
+**Actions are typed methods, not a sealed intent class.** `setQuery`,
+`toggleFavorite`, `openClock` and the rest are the action surface. Introducing a
+`LauncherIntent` hierarchy would add a dispatch layer that maps one-to-one onto
+these methods without adding a rule to enforce — the property AC4 actually needs is
+that *no caller can write state directly*, which is achieved by keeping every flow
+private and exposing only read-only `StateFlow`s.
+
+Note that derived state settles one scheduler pass after an action, not
+synchronously. That is inherent to a combined snapshot and is imperceptible in the
+UI, but a test asserting on `uiState` after a direct call must let the scheduler run
+first.
+
 Two decisions are load-bearing and easy to break:
 
 - **Auto-launch is decided in the ViewModel, not in a composable effect.** The

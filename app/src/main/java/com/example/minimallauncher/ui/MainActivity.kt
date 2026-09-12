@@ -39,7 +39,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val themeKey by vm.themeKey.collectAsState()
+            val themeKey = vm.uiState.collectAsState().value.themeKey
             val palette = remember(themeKey) { paletteFor(themeKey) }
 
             // Keep system-bar icons readable on both light and dark themes.

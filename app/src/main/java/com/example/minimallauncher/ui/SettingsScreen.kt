@@ -52,11 +52,12 @@ import com.example.minimallauncher.ui.theme.TextTertiary
 
 @Composable
 fun SettingsScreen(vm: LauncherViewModel, onBack: () -> Unit) {
-    val apps by vm.allApps.collectAsStateCompat()
-    val favorites by vm.favoriteSet.collectAsStateCompat()
-    val hidden by vm.hiddenSet.collectAsStateCompat()
-    val use24h by vm.use24h.collectAsStateCompat()
-    val themeKey by vm.themeKey.collectAsStateCompat()
+    val state by vm.uiState.collectAsStateCompat()
+    val apps = state.apps
+    val favorites = state.favoritePackages
+    val hidden = state.hiddenPackages
+    val use24h = state.use24h
+    val themeKey = state.themeKey
 
     Column(
         modifier = Modifier

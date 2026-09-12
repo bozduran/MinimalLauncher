@@ -58,10 +58,13 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
     onOpenDrawer: () -> Unit,
 ) {
-    val favorites by vm.favorites.collectAsStateCompat()
-    val use24h by vm.use24h.collectAsStateCompat()
-    val isLoadingApps by vm.isLoadingApps.collectAsStateCompat()
-    val appListError by vm.appListError.collectAsStateCompat()
+    // One snapshot for the whole screen (ARCH-2): favorites, clock mode and the
+    // load state can never disagree with each other.
+    val state by vm.uiState.collectAsStateCompat()
+    val favorites = state.favorites
+    val use24h = state.use24h
+    val isLoadingApps = state.isLoadingApps
+    val appListError = state.appListError
     val now by rememberCurrentTime()
 
     // Compiled once per locale rather than reallocated on each (per-minute) recomposition.

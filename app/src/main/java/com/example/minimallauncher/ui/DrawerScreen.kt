@@ -51,9 +51,10 @@ private const val FOCUS_ATTEMPTS = 2
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
-    val apps by vm.drawerApps.collectAsStateCompat()
-    val query by vm.query.collectAsStateCompat()
-    val favorites by vm.favoriteSet.collectAsStateCompat()
+    val state by vm.uiState.collectAsStateCompat()
+    val apps = state.drawerApps
+    val query = state.query
+    val favorites = state.favoritePackages
     var menuApp by remember { mutableStateOf<AppInfo?>(null) }
 
     val focusRequester = remember { FocusRequester() }
