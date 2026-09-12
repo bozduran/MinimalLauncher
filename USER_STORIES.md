@@ -9,9 +9,9 @@
 
 ## Implementation status
 
-Implemented on branch `refactor/user-stories-implementation` (31 stories complete, 4 partial — 35 of 41 touched).
+Implemented on branch `refactor/user-stories-implementation` (32 stories complete, 4 partial — 36 of 41 touched).
 Every commit below is atomic and was verified with `./gradlew assembleDebug assembleRelease testDebugUnitTest`
-plus a green test run before committing. **218 unit tests, 0 failures**, lint clean and blocking.
+plus a green test run before committing. **236 unit tests, 0 failures**, lint clean and blocking.
 
 | Story | Status | Commit |
 | --- | --- | --- |
@@ -50,8 +50,9 @@ plus a green test run before committing. **218 unit tests, 0 failures**, lint cl
 | PLAT-2 predictive back + back semantics | ✅ done | `9c733d7` |
 | I18N-3 resolve clock/calendar by capability | ✅ done | `bd4f193` |
 | PERF-6 version scheme | ⚠️ partial — versioning done, applicationId needs an owner decision | `ee82ccc` |
+| PLAT-1 LauncherApps / profiles | ✅ done (work-profile *rendering* unverified on device) | `4c0be4c` |
 
-**Still open (6 stories):** PERF-3, PERF-5, PLAT-1, QA-3, A11Y-1, A11Y-2.
+**Still open (5 stories):** PERF-3, PERF-5, QA-3, A11Y-1, A11Y-2.
 
 ### Device verification policy
 
@@ -68,11 +69,11 @@ Consequences for the open stories — these are the reasons they are not closed:
 | A11Y-2 font scale / tap targets | Needs a device at 1.3x–2.0x font scale | Same |
 | PERF-5 recomposition counts | Needs Layout Inspector / JankStats on a device | Fixes can land; counts unmeasured |
 | PERF-3 baseline profiles | Profiles are generated and measured on a device | Not startable |
-| PLAT-1 `LauncherApps` / work profiles | Needs a work profile or second user | **Testable without one**, via an interface + fakes |
+| PLAT-1 `LauncherApps` / work profiles | Needs a work profile or second user | ✅ done — enumeration is behind an interface and unit-tested; only the on-device rendering is unverified |
 
-PLAT-1 is the exception: the profile-aware enumeration can be put behind an
-interface and unit-tested with fakes, so it is the last story that can be completed
-to the same standard as the rest.
+PLAT-1 was the exception and is now complete: the profile-aware enumeration sits
+behind `LaunchableSource` and is unit-tested with fakes. The five stories above it
+remain open because none of them can be completed to that standard here.
 
 **Partial (4):** DATA-4 and PERF-2 are implemented but need on-device verification
 (`bmgr backupnow/restore`; an R8 release smoke test). QA-4's CI pipeline is live but
