@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Auto Backup rules (API 30 and below; see data_extraction_rules.xml for 31+).
+
+  The launcher's only persisted state is a Preferences DataStore, which lives at
+  files/datastore/launcher_settings.preferences_pb — that is the "file" domain
+  (filesDir), NOT "sharedpref" (shared_prefs/). Because an <include> list is
+  exclusive, the previous rules ("sharedpref" only) backed up nothing at all and
+  a restore produced a fresh launcher with no favorites and the default theme.
+-->
 <full-backup-content>
-    <include domain="sharedpref" path="." />
+    <include domain="file" path="datastore/" />
 </full-backup-content>

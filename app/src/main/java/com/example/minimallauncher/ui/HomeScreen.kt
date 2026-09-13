@@ -1,9 +1,12 @@
 package com.example.minimallauncher.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,120 +15,193 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material3.Text
-import com.example.minimallauncher.data.AppLauncher
-import com.example.minimallauncher.ui.theme.Accent
+import com.example.minimallauncher.R
+import com.example.minimallauncher.ui.theme.AppTextStyles
 import com.example.minimallauncher.ui.theme.Bg
+import com.example.minimallauncher.ui.theme.Dimens
 import com.example.minimallauncher.ui.theme.JetBrainsMono
 import com.example.minimallauncher.ui.theme.TextPrimary
 import com.example.minimallauncher.ui.theme.TextSecondary
 import com.example.minimallauncher.ui.theme.TextTertiary
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-private fun rememberCurrentTime(): State<LocalDateTime> =
-    produceState(initialValue = LocalDateTime.now()) {
-        while (true) {
-            value = LocalDateTime.now()
-            // tick on the minute boundary (we only render HH:mm)
-            val delayMs = 60_000L - (System.currentTimeMillis() % 60_000L)
-            delay(delayMs)
+private fun rememberCurrentTime(): State<LocalDateTime> {
+    // Bound to RESUMED: a HOME activity spends most of its life stopped, and an
+    // always-running minute ticker kept a coroutine and a recomposition alive for a
+    // clock nobody was looking at.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val time = remember { mutableStateOf(LocalDateTime.now()) }
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                time.value = LocalDateTime.now()
+                // tick on the minute boundary (we only render HH:mm)
+                val delayMs = 60_000L - (System.currentTimeMillis() % 60_000L)
+                delay(delayMs)
+            }
         }
     }
+    return time
+}
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     vm: LauncherViewModel,
     onOpenSettings: () -> Unit,
+    onOpenDrawer: () -> Unit,
 ) {
-    val context = LocalContext.current
-    val favorites by vm.favorites.collectAsStateCompat()
-    val use24h by vm.use24h.collectAsStateCompat()
+    // One snapshot for the whole screen (ARCH-2): favorites, clock mode and the
+    // load state can never disagree with each other.
+    val state by vm.uiState.collectAsStateCompat()
+    val favorites = state.favorites
+    val use24h = state.use24h
+    val isLoadingApps = state.isLoadingApps
+    val appListError = state.appListError
     val now by rememberCurrentTime()
 
-    val timePattern = if (use24h) "HH:mm" else "h:mm"
-    val timeFmt = DateTimeFormatter.ofPattern(timePattern, Locale.getDefault())
-    val dateFmt = DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.getDefault())
+    // Long-press is the only way to Settings, which is undiscoverable for a screen
+    // reader. A custom accessibility action gives TalkBack a real entry point.
+    val openSettingsLabel = stringResource(R.string.cd_open_settings)
 
-    Column(
+    // Compiled once per locale rather than reallocated on each (per-minute) recomposition.
+    val locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
+    val clock = remember(locale) { ClockFormatter(locale) }
+
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(Bg)
-            .systemBarsPadding()
-            .pointerInput(Unit) {
-                detectTapGestures(onLongPress = { onOpenSettings() })
-            }
-            .padding(horizontal = 30.dp),
-        verticalArrangement = Arrangement.Center,
+            .background(Bg),
     ) {
-        Text(
-            text = now.format(timeFmt),
-            fontFamily = JetBrainsMono,
-            fontWeight = FontWeight.Light,
-            fontSize = 66.sp,
-            lineHeight = 70.sp,
-            color = TextPrimary,
-            modifier = Modifier.clickable { AppLauncher.openClock(context) },
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = now.format(dateFmt).replaceFirstChar { it.titlecase(Locale.getDefault()) },
-            fontFamily = JetBrainsMono,
-            fontWeight = FontWeight.Normal,
-            fontSize = 15.sp,
-            color = TextSecondary,
-            modifier = Modifier.clickable { AppLauncher.openCalendar(context) },
-        )
-
-        Spacer(Modifier.height(54.dp))
-
-        if (favorites.isEmpty()) {
-            Text(
-                text = "no favorites yet\nlong-press anywhere to open settings",
-                fontFamily = JetBrainsMono,
-                fontSize = 13.sp,
-                lineHeight = 20.sp,
-                color = TextTertiary,
-            )
-        } else {
-            favorites.forEach { app ->
-                Text(
-                    text = app.label,
-                    fontFamily = JetBrainsMono,
-                    fontWeight = FontWeight.Normal,
-                    fontSize = 23.sp,
-                    color = TextPrimary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { AppLauncher.launch(context, app) }
-                        .padding(vertical = 11.dp),
-                )
-            }
+        // The column cannot scroll — the only vertical gesture belongs to the pager
+        // that opens the drawer — so the row count is derived from the real height
+        // instead of being allowed to overflow off both edges of the screen.
+        val visibleFavorites = remember(favorites, maxHeight) {
+            HomeFavoritesLayout.visible(favorites, maxHeight)
         }
+        val overflow = HomeFavoritesLayout.overflowCount(favorites, maxHeight)
 
-        Spacer(Modifier.height(40.dp))
-        Text(
-            text = "↑ apps",
-            fontFamily = JetBrainsMono,
-            fontSize = 12.sp,
-            color = TextTertiary,
-            textAlign = TextAlign.Start,
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .systemBarsPadding()
+                .pointerInput(Unit) {
+                    detectTapGestures(onLongPress = { onOpenSettings() })
+                }
+                .semantics {
+                    customActions = listOf(
+                        CustomAccessibilityAction(openSettingsLabel) {
+                            onOpenSettings()
+                            true
+                        },
+                    )
+                }
+                .padding(horizontal = Dimens.ScreenPadding),
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = clock.time(now, use24h),
+                style = AppTextStyles.Clock,
+                color = TextPrimary,
+                modifier = Modifier.clickable { vm.openClock() },
+            )
+            Spacer(Modifier.height(Dimens.SpaceXs))
+            Text(
+                text = clock.date(now),
+                style = AppTextStyles.Date,
+                color = TextSecondary,
+                modifier = Modifier.clickable { vm.openCalendar() },
+            )
+
+            Spacer(Modifier.height(54.dp))
+
+            // Only tell the user they have no favorites once we actually know: the
+            // onboarding copy must not appear while the first load is still running.
+            if (favorites.isEmpty()) {
+                when {
+                    isLoadingApps -> Unit
+                    appListError != null -> HomeHint(stringResource(R.string.home_load_failed))
+                    else -> HomeHint(stringResource(R.string.home_no_favorites))
+                }
+            } else {
+                visibleFavorites.forEach { app ->
+                    Text(
+                        text = app.label,
+                        style = AppTextStyles.Favorite,
+                        color = TextPrimary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(Dimens.RowCorner))
+                            // combinedClickable, not clickable: a long press on a row
+                            // is now deterministically "open settings" instead of
+                            // racing the parent's gesture detector, which could
+                            // deliver both outcomes.
+                            .combinedClickable(
+                                onClick = { vm.launchApp(app) },
+                                onLongClick = { onOpenSettings() },
+                            )
+                            .padding(vertical = Dimens.RowVertical),
+                    )
+                }
+
+                // Everything that did not fit stays reachable: the drawer lists every
+                // app, so this row is a route to the rest rather than a dead end.
+                if (overflow > 0) {
+                    Text(
+                        text = pluralStringResource(R.plurals.home_more_favorites, overflow, overflow),
+                        style = AppTextStyles.ListRow,
+                        color = TextSecondary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(Dimens.RowCorner))
+                            .clickable { onOpenDrawer() }
+                            .padding(vertical = Dimens.RowVertical),
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(40.dp))
+            Text(
+                text = stringResource(R.string.home_open_drawer),
+                style = AppTextStyles.Footer,
+                color = TextTertiary,
+                textAlign = TextAlign.Start,
+            )
+        }
     }
+}
+
+@Composable
+private fun HomeHint(text: String) {
+    Text(
+        text = text,
+        style = AppTextStyles.Hint,
+        color = TextTertiary,
+    )
 }

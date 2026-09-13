@@ -6,33 +6,48 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
+import com.example.minimallauncher.R
 import com.example.minimallauncher.ui.theme.Accent
+import com.example.minimallauncher.ui.theme.AppTextStyles
+import com.example.minimallauncher.ui.theme.Dimens
 import com.example.minimallauncher.ui.theme.JetBrainsMono
 import com.example.minimallauncher.ui.theme.TextPrimary
 import com.example.minimallauncher.ui.theme.TextSecondary
 import com.example.minimallauncher.ui.theme.TextTertiary
 import kotlinx.coroutines.flow.StateFlow
 
-/** Convenience wrapper so screens can collect a StateFlow without extra imports. */
+/**
+ * Collects a [StateFlow] only while the composition's lifecycle is at least STARTED.
+ *
+ * A plain `collectAsState()` keeps collecting while the launcher is stopped — a HOME
+ * activity is stopped often (another app is in front, the screen is off) — so every
+ * state change still drove recomposition work for a UI nobody could see.
+ */
 @Composable
-fun <T> StateFlow<T>.collectAsStateCompat(): State<T> = collectAsState()
+fun <T> StateFlow<T>.collectAsStateCompat(): State<T> = collectAsStateWithLifecycle()
 
 @Composable
 fun SearchField(
@@ -42,6 +57,8 @@ fun SearchField(
     focusRequester: FocusRequester? = null,
     onSearch: () -> Unit = {},
 ) {
+    val clearLabel = stringResource(R.string.cd_clear_search)
+
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -51,11 +68,7 @@ fun SearchField(
                 value = query,
                 onValueChange = onChange,
                 singleLine = true,
-                textStyle = TextStyle(
-                    fontFamily = JetBrainsMono,
-                    fontSize = 20.sp,
-                    color = TextPrimary,
-                ),
+                textStyle = AppTextStyles.DrawerItem.copy(color = TextPrimary),
                 cursorBrush = SolidColor(Accent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { onSearch() }),
@@ -65,23 +78,29 @@ fun SearchField(
             )
             if (query.isEmpty()) {
                 Text(
-                    text = "search…",
-                    fontFamily = JetBrainsMono,
-                    fontSize = 20.sp,
+                    text = stringResource(R.string.search_hint),
+                    style = AppTextStyles.DrawerItem,
                     color = TextTertiary,
                 )
             }
         }
         if (query.isNotEmpty()) {
             Text(
-                text = "×",
-                fontFamily = JetBrainsMono,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Light,
+                text = stringResource(R.string.search_clear_symbol),
+                style = AppTextStyles.SearchClear,
                 color = TextSecondary,
                 modifier = Modifier
+                    // The glyph stays small; the touch target must not. A bare text
+                    // node was roughly 26dp tall, well under the 48dp minimum.
+                    .sizeIn(minWidth = Dimens.MinTouchTarget, minHeight = Dimens.MinTouchTarget)
                     .clickable { onChange("") }
-                    .padding(start = 10.dp),
+                    .padding(start = Dimens.SpaceSm)
+                    // "x" is not a word: without this TalkBack announces the letter
+                    // rather than what the control does.
+                    .semantics {
+                        contentDescription = clearLabel
+                        role = Role.Button
+                    },
             )
         }
     }

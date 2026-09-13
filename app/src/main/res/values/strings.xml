@@ -1,3 +1,63 @@
 <resources>
-    <string name="app_name">Minimal</string>
+    <!-- Brand name: never translated (translatable="false" also satisfies lint). -->
+    <string name="app_name" translatable="false">Minimal</string>
+
+    <!-- Home screen -->
+    <string name="home_no_favorites">no favorites yet\nlong-press anywhere to open settings</string>
+    <string name="home_load_failed">couldn\'t load your apps\nlong-press anywhere to open settings</string>
+    <string name="home_open_drawer">↑ apps</string>
+    <plurals name="home_more_favorites">
+        <item quantity="one">and %1$d more</item>
+        <item quantity="other">and %1$d more</item>
+    </plurals>
+
+    <!-- Drawer -->
+    <string name="search_hint">search…</string>
+    <string name="menu_remove_favorite">remove from favorites</string>
+    <string name="menu_add_favorite">add to favorites</string>
+    <string name="menu_hide_app">hide app</string>
+    <string name="menu_app_info">app info</string>
+    <string name="menu_uninstall">uninstall</string>
+
+    <string name="profile_other">other profile</string>
+
+
+    <!-- Accessibility labels (A11Y-1). -->
+    <string name="cd_open_settings">open settings</string>
+    <string name="cd_clear_search">clear search</string>
+    <string name="cd_app_options">app options</string>
+    <string name="cd_unhide_app">unhide app</string>
+    <string name="state_favorited">favorite</string>
+    <string name="state_not_favorited">not a favorite</string>
+    <string name="state_theme_selected">selected</string>
+    <string name="state_theme_not_selected">not selected</string>
+
+    <!-- Settings -->
+    <string name="settings_title">settings</string>
+    <string name="settings_24h">24-hour clock</string>
+    <string name="settings_set_default_launcher">set as default launcher</string>
+    <string name="settings_section_theme">theme</string>
+    <string name="settings_section_favorites">favorites — tap to toggle</string>
+    <string name="settings_unhide">unhide</string>
+
+    <!--
+      Symbols, not language: extracted so HardcodedText can be a blocking lint
+      check, and marked translatable="false" so no locale can alter them.
+    -->
+    <string name="search_clear_symbol" translatable="false">×</string>
+    <string name="favorite_on_symbol" translatable="false">★</string>
+    <string name="favorite_off_symbol" translatable="false">☆</string>
+    <string name="back_symbol" translatable="false">‹</string>
+
+    <!--
+      Failure messages for outgoing actions (STAB-5).
+      NOTE: theme names in ui/theme/Color.kt are deliberately untranslated product
+      names, and the glyph symbols above are marked translatable="false".
+    -->
+    <string name="error_open_app">Can\'t open %1$s</string>
+    <string name="error_app_info">No app details screen available</string>
+    <string name="error_uninstall">Can\'t uninstall this app</string>
+    <string name="error_home_settings">No home settings screen available</string>
+    <string name="error_clock">No clock app available</string>
+    <string name="error_calendar">No calendar app available</string>
 </resources>

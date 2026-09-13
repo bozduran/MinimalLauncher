@@ -23,65 +23,78 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.example.minimallauncher.R
 import com.example.minimallauncher.data.AppInfo
-import com.example.minimallauncher.data.AppLauncher
+import com.example.minimallauncher.data.ProfileKind
 import com.example.minimallauncher.ui.theme.Accent
+import com.example.minimallauncher.ui.theme.AppTextStyles
 import com.example.minimallauncher.ui.theme.Bg
+import com.example.minimallauncher.ui.theme.Dimens
 import com.example.minimallauncher.ui.theme.BorderCol
 import com.example.minimallauncher.ui.theme.JetBrainsMono
 import com.example.minimallauncher.ui.theme.SurfaceCol
 import com.example.minimallauncher.ui.theme.TextPrimary
 import com.example.minimallauncher.ui.theme.TextSecondary
-import kotlinx.coroutines.delay
+import com.example.minimallauncher.ui.theme.TextTertiary
+
+private const val FOCUS_ATTEMPTS = 2
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
-    val context = LocalContext.current
-    val apps by vm.drawerApps.collectAsStateCompat()
-    val query by vm.query.collectAsStateCompat()
-    val favorites by vm.favoriteSet.collectAsStateCompat()
+    val state by vm.uiState.collectAsStateCompat()
+    val apps = state.drawerApps
+    val query = state.query
+    val favorites = state.favoritePackages
     var menuApp by remember { mutableStateOf<AppInfo?>(null) }
+
+    val appOptionsLabel = stringResource(R.string.cd_app_options)
+    val favoritedLabel = stringResource(R.string.state_favorited)
+    val notFavoritedLabel = stringResource(R.string.state_not_favorited)
 
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
-    val latestApps by rememberUpdatedState(apps)
-    var lastLaunched by remember { mutableStateOf<String?>(null) }
 
-    // Auto-focus the search box + show keyboard when the drawer is the active page.
+    // Returning to the home screen must not leave the app menu (a separate Dialog
+    // window) on screen over it.
     LaunchedEffect(active) {
-        if (active) {
-            delay(100) // let the field finish laying out before we focus it
-            runCatching { focusRequester.requestFocus() }
-            keyboard?.show()
-        } else {
-            keyboard?.hide()
-        }
+        if (!active) menuApp = null
     }
 
-    // Auto-launch when the query narrows to exactly one app (debounced so it
-    // doesn't fire mid-typing, and guarded so it won't relaunch on return).
-    LaunchedEffect(query) {
-        if (query.isBlank()) {
-            lastLaunched = null
+    // Auto-focus the search box when the drawer becomes the active page.
+    //
+    // Waits for a frame rather than sleeping: a fixed delay was a guess about frame
+    // timing, so on a slow first composition the field might not be attached yet and
+    // the failure was swallowed by runCatching (the keyboard opened over an
+    // unfocused field, with no log and no retry).
+    LaunchedEffect(active) {
+        if (!active) {
+            keyboard?.hide()
             return@LaunchedEffect
         }
-        delay(350)
-        val results = latestApps
-        if (results.size == 1 && query != lastLaunched) {
-            lastLaunched = query
-            AppLauncher.launch(context, results.first())
+        // Two attempts, each preceded by a frame, then report rather than swallow.
+        repeat(FOCUS_ATTEMPTS) { attempt ->
+            withFrameNanos { }
+            val result = runCatching { focusRequester.requestFocus() }
+            if (result.isSuccess) return@LaunchedEffect
+            if (attempt == FOCUS_ATTEMPTS - 1) {
+                vm.onSearchFocusFailed(result.exceptionOrNull() ?: IllegalStateException("no focus target"))
+            }
         }
     }
 
@@ -95,9 +108,9 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
         SearchField(
             query = query,
             onChange = vm::setQuery,
-            modifier = Modifier.padding(horizontal = 28.dp, vertical = 14.dp),
+            modifier = Modifier.padding(horizontal = Dimens.RowPadding, vertical = Dimens.MenuRowVertical),
             focusRequester = focusRequester,
-            onSearch = { latestApps.firstOrNull()?.let { AppLauncher.launch(context, it) } },
+            onSearch = { vm.submitSearch() },
         )
         HorizontalDivider(color = BorderCol, thickness = 1.dp)
 
@@ -107,21 +120,53 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
                 .fillMaxWidth(),
             contentPadding = PaddingValues(vertical = 6.dp),
         ) {
-            items(apps, key = { it.key }) { app ->
-                Text(
-                    text = app.label,
-                    fontFamily = JetBrainsMono,
-                    fontWeight = FontWeight.Normal,
-                    fontSize = 20.sp,
-                    color = TextPrimary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .combinedClickable(
-                            onClick = { AppLauncher.launch(context, app) },
-                            onLongClick = { menuApp = app },
+            items(apps, key = { it.packageName }) { app ->
+                Column {
+                    Text(
+                        text = app.label,
+                        style = AppTextStyles.DrawerItem,
+                        color = TextPrimary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .combinedClickable(
+                                onClick = { vm.launchApp(app) },
+                                onLongClick = { menuApp = app },
+                            )
+                            .padding(
+                                horizontal = Dimens.ScreenPadding,
+                                vertical = Dimens.DrawerRowVertical,
+                            )
+                            // The app menu is long-press only; a custom action gives
+                            // TalkBack a way in, and the state is announced because
+                            // the favourite flag is otherwise invisible.
+                            .semantics {
+                                stateDescription = if (app.packageName in favorites) {
+                                    favoritedLabel
+                                } else {
+                                    notFavoritedLabel
+                                }
+                                customActions = listOf(
+                                    CustomAccessibilityAction(appOptionsLabel) {
+                                        menuApp = app
+                                        true
+                                    },
+                                )
+                            },
+                    )
+                    // Apps from another profile (work, secondary user) are marked so
+                    // two entries with the same name stay distinguishable.
+                    if (app.profileKind != ProfileKind.Current) {
+                        Text(
+                            text = stringResource(R.string.profile_other),
+                            style = AppTextStyles.ThemeLabel,
+                            color = TextTertiary,
+                            modifier = Modifier.padding(
+                                start = Dimens.ScreenPadding,
+                                bottom = Dimens.SpaceSm,
+                            ),
                         )
-                        .padding(horizontal = 30.dp, vertical = 13.dp),
-                )
+                    }
+                }
             }
         }
     }
@@ -132,8 +177,8 @@ fun DrawerScreen(vm: LauncherViewModel, active: Boolean) {
             isFavorite = app.packageName in favorites,
             onToggleFavorite = { vm.toggleFavorite(app.packageName); menuApp = null },
             onHide = { vm.toggleHidden(app.packageName); menuApp = null },
-            onInfo = { AppLauncher.openAppInfo(context, app.packageName); menuApp = null },
-            onUninstall = { AppLauncher.uninstall(context, app.packageName); menuApp = null },
+            onInfo = { vm.openAppInfo(app.packageName); menuApp = null },
+            onUninstall = { vm.uninstall(app.packageName); menuApp = null },
             onDismiss = { menuApp = null },
         )
     }
@@ -153,24 +198,29 @@ private fun AppMenu(
         Column(
             modifier = Modifier
                 .widthIn(min = 250.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(Dimens.PanelCorner))
                 .background(SurfaceCol)
-                .border(1.dp, BorderCol, RoundedCornerShape(16.dp))
+                .border(1.dp, BorderCol, RoundedCornerShape(Dimens.PanelCorner))
                 .padding(vertical = 8.dp),
         ) {
             Text(
                 text = app.label,
-                fontFamily = JetBrainsMono,
-                fontWeight = FontWeight.Medium,
-                fontSize = 15.sp,
+                style = AppTextStyles.MenuHeader,
                 color = TextSecondary,
-                modifier = Modifier.padding(horizontal = 22.dp, vertical = 10.dp),
+                modifier = Modifier.padding(
+                    horizontal = Dimens.MenuPadding,
+                    vertical = Dimens.MenuHeaderVertical,
+                ),
             )
             HorizontalDivider(color = BorderCol, thickness = 1.dp)
-            MenuRow(if (isFavorite) "remove from favorites" else "add to favorites", onToggleFavorite)
-            MenuRow("hide app", onHide)
-            MenuRow("app info", onInfo)
-            MenuRow("uninstall", onUninstall, color = Accent)
+            MenuRow(
+                if (isFavorite) stringResource(R.string.menu_remove_favorite)
+                else stringResource(R.string.menu_add_favorite),
+                onToggleFavorite,
+            )
+            MenuRow(stringResource(R.string.menu_hide_app), onHide)
+            MenuRow(stringResource(R.string.menu_app_info), onInfo)
+            MenuRow(stringResource(R.string.menu_uninstall), onUninstall, color = Accent)
         }
     }
 }
@@ -179,12 +229,11 @@ private fun AppMenu(
 private fun MenuRow(text: String, onClick: () -> Unit, color: androidx.compose.ui.graphics.Color = TextPrimary) {
     Text(
         text = text,
-        fontFamily = JetBrainsMono,
-        fontSize = 16.sp,
+        style = AppTextStyles.MenuRow,
         color = color,
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(horizontal = 22.dp, vertical = 14.dp),
+            .padding(horizontal = Dimens.MenuPadding, vertical = Dimens.MenuRowVertical),
     )
 }

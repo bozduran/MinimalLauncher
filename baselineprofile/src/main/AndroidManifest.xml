@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A test-only APK: it drives the launcher to record its start-up profile. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Monochrome layer for themed launcher icons (Android 13+).
+
+  The system tints this layer, so only the shape and alpha matter; the fill colour
+  is deliberately a plain solid. It mirrors ic_launcher_foreground so the themed
+  icon matches the default one.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FF000000"
+        android:pathData="M54,40 a14,14 0 1,0 0.01,0 z"/>
+    <path android:fillColor="#FF000000"
+        android:pathData="M40,70 h28 v3 h-28 z"/>
+</vector>

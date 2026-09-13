@@ -1,61 +1,54 @@
 package com.example.minimallauncher.data
 
-import android.content.Context
-import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.core.stringSetPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
-import com.example.minimallauncher.ui.theme.DEFAULT_THEME_KEY
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
-val Context.dataStore by preferencesDataStore(name = "launcher_settings")
+/**
+ * Persisted launcher preferences: favorites (ordered), hidden packages, the
+ * 12/24-hour clock preference and the selected theme key.
+ *
+ * Implementations are the single owner of the storage format — the ViewModel and
+ * UI never see `Preferences` keys. This is what allows the DataStore-backed
+ * implementation to be exercised in a plain JVM test over a temporary file.
+ */
+interface SettingsRepository {
 
-class SettingsRepository(private val context: Context) {
+    /** Ordered list of favorite package names. */
+    val favorites: Flow<List<String>>
 
-    private object Keys {
-        // Ordered list of favorite package names, newline-separated.
-        val FAVORITES = stringPreferencesKey("favorites")
-        val HIDDEN = stringSetPreferencesKey("hidden")
-        val USE_24H = booleanPreferencesKey("use_24h")
-        val THEME = stringPreferencesKey("theme")
-    }
+    /** Package names hidden from the drawer. */
+    val hidden: Flow<Set<String>>
 
-    val favorites: Flow<List<String>> = context.dataStore.data.map { prefs ->
-        prefs[Keys.FAVORITES]?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()
-    }
+    /** True for a 24-hour clock. */
+    val use24h: Flow<Boolean>
 
-    val hidden: Flow<Set<String>> = context.dataStore.data.map { it[Keys.HIDDEN] ?: emptySet() }
+    /** Selected theme key; falls back to [com.example.minimallauncher.ui.theme.DEFAULT_THEME_KEY]. */
+    val themeKey: Flow<String>
 
-    val use24h: Flow<Boolean> = context.dataStore.data.map { it[Keys.USE_24H] ?: true }
+    /**
+     * Non-null while the stored settings cannot be read and defaults are being
+     * used. Sticky: it stays set until the store becomes readable again, so the UI
+     * can warn the user rather than silently presenting defaults as their config.
+     */
+    val readError: Flow<Throwable?>
 
-    val themeKey: Flow<String> =
-        context.dataStore.data.map { it[Keys.THEME] ?: DEFAULT_THEME_KEY }
+    /** Adds the package to favorites if absent, removes it if present. */
+    suspend fun toggleFavorite(pkg: String)
 
-    suspend fun toggleFavorite(pkg: String) {
-        context.dataStore.edit { prefs ->
-            val current = prefs[Keys.FAVORITES]
-                ?.split("\n")?.filter { it.isNotBlank() }?.toMutableList()
-                ?: mutableListOf()
-            if (!current.remove(pkg)) current.add(pkg)
-            prefs[Keys.FAVORITES] = current.joinToString("\n")
-        }
-    }
+    /** Hides the package if visible, unhides it if hidden. */
+    suspend fun toggleHidden(pkg: String)
 
-    suspend fun toggleHidden(pkg: String) {
-        context.dataStore.edit { prefs ->
-            val current = (prefs[Keys.HIDDEN] ?: emptySet()).toMutableSet()
-            if (!current.add(pkg)) current.remove(pkg)
-            prefs[Keys.HIDDEN] = current
-        }
-    }
+    suspend fun setUse24h(value: Boolean)
 
-    suspend fun setUse24h(value: Boolean) {
-        context.dataStore.edit { it[Keys.USE_24H] = value }
-    }
+    suspend fun setTheme(key: String)
 
-    suspend fun setTheme(key: String) {
-        context.dataStore.edit { it[Keys.THEME] = key }
-    }
+    /**
+     * Drops favorites and hidden entries whose package is not in [installed].
+     *
+     * Uninstalling an app used to leave its favorite/hidden entries in the store
+     * forever, so reinstalling the package silently resurrected the old choices.
+     *
+     * Callers must not pass an empty set: that would discard the user's entire
+     * configuration on a transient empty enumeration.
+     */
+    suspend fun pruneMissing(installed: Set<String>)
 }

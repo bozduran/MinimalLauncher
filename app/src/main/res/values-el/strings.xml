@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Greek translation.
+
+  The launcher's search is deliberately Greek-aware (see TextNormalizer), so a
+  Greek-localised UI is the natural companion. Every key present in
+  values/strings.xml must appear here — TranslationParityTest enforces it.
+-->
+<resources>
+    <!-- Home screen -->
+    <string name="home_no_favorites">δεν υπάρχουν αγαπημένες εφαρμογές ακόμη\nπατήστε παρατεταμένα παντού για τις ρυθμίσεις</string>
+    <string name="home_load_failed">δεν ήταν δυνατή η φόρτωση των εφαρμογών\nπατήστε παρατεταμένα παντού για τις ρυθμίσεις</string>
+    <string name="home_open_drawer">↑ εφαρμογές</string>
+    <plurals name="home_more_favorites">
+        <item quantity="one">και %1$d ακόμη</item>
+        <item quantity="other">και %1$d ακόμη</item>
+    </plurals>
+
+    <!-- Drawer -->
+    <string name="search_hint">αναζήτηση…</string>
+    <string name="menu_remove_favorite">αφαίρεση από τα αγαπημένα</string>
+    <string name="menu_add_favorite">προσθήκη στα αγαπημένα</string>
+    <string name="menu_hide_app">απόκρυψη εφαρμογής</string>
+    <string name="menu_app_info">πληροφορίες εφαρμογής</string>
+    <string name="menu_uninstall">απεγκατάσταση</string>
+
+    <string name="profile_other">άλλο προφίλ</string>
+
+
+    <!-- Accessibility labels (A11Y-1). -->
+    <string name="cd_open_settings">άνοιγμα ρυθμίσεων</string>
+    <string name="cd_clear_search">καθαρισμός αναζήτησης</string>
+    <string name="cd_app_options">επιλογές εφαρμογής</string>
+    <string name="cd_unhide_app">εμφάνιση εφαρμογής</string>
+    <string name="state_favorited">αγαπημένο</string>
+    <string name="state_not_favorited">δεν είναι αγαπημένο</string>
+    <string name="state_theme_selected">επιλεγμένο</string>
+    <string name="state_theme_not_selected">μη επιλεγμένο</string>
+
+    <!-- Settings -->
+    <string name="settings_title">ρυθμίσεις</string>
+    <string name="settings_24h">ρολόι 24 ώρων</string>
+    <string name="settings_set_default_launcher">ορισμός ως προεπιλεγμένης αρχικής οθόνης</string>
+    <string name="settings_section_theme">θέμα</string>
+    <string name="settings_section_favorites">αγαπημένα — πατήστε για εναλλαγή</string>
+    <string name="settings_unhide">εμφάνιση</string>
+
+    <!-- Failure messages -->
+    <string name="error_open_app">Δεν είναι δυνατό το άνοιγμα: %1$s</string>
+    <string name="error_app_info">Δεν υπάρχει οθόνη πληροφοριών εφαρμογής</string>
+    <string name="error_uninstall">Δεν είναι δυνατή η απεγκατάσταση αυτής της εφαρμογής</string>
+    <string name="error_home_settings">Δεν υπάρχουν ρυθμίσεις αρχικής οθόνης</string>
+    <string name="error_clock">Δεν υπάρχει εφαρμογή ρολογιού</string>
+    <string name="error_calendar">Δεν υπάρχει εφαρμογή ημερολογίου</string>
+</resources>

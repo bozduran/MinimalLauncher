@@ -62,15 +62,24 @@ built-in colour schemes.
 app/src/main/
 ├── AndroidManifest.xml          # HOME intent-filter makes it a launcher
 ├── java/com/example/minimallauncher/
-│   ├── data/                    # app querying, settings (DataStore), search normaliser
-│   │   ├── AppInfo.kt
-│   │   ├── AppLauncher.kt       # launch / app-info / uninstall / clock / calendar intents
-│   │   ├── AppRepository.kt     # queries launchable apps, locale-sorted
-│   │   ├── SettingsRepository.kt# favourites, hidden, 24h, theme  (DataStore)
-│   │   └── TextNormalizer.kt    # Greek + Latin accent/case folding for search
+│   ├── data/                    # interfaces + Android-backed implementations
+│   │   ├── AppInfo.kt           # one launchable app; package name is the identity
+│   │   ├── AppListOrdering.kt   # one entry per package, locale-collated  (pure)
+│   │   ├── AppRepository.kt     # interface
+│   │   ├── PackageManagerAppRepository.kt
+│   │   ├── SettingsRepository.kt# interface
+│   │   ├── DataStoreSettingsRepository.kt   # favourites, hidden, 24h, theme
+│   │   ├── AppChangeSource.kt   # interface + package/locale broadcast receiver
+│   │   ├── LauncherGateway.kt   # interface + intents (launch/info/uninstall/…)
+│   │   ├── AppLogger.kt         # failure seam
+│   │   └── TextNormalizer.kt    # Greek + Latin accent/case folding  (pure)
 │   └── ui/
 │       ├── MainActivity.kt      # vertical pager, edge-to-edge, Home/Back handling
-│       ├── LauncherViewModel.kt # app/favourite/search state + live package updates
+│       ├── LauncherViewModel.kt # all state + all side effects
+│       ├── LauncherViewModelFactory.kt  # the one place dependencies are chosen
+│       ├── LauncherAction.kt    # typed outgoing actions + failure messages
+│       ├── ClockFormatter.kt    # 12/24h + locale date formatting  (pure)
+│       ├── HomeFavoritesLayout.kt  # how many favourites fit the height  (pure)
 │       ├── HomeScreen.kt        # clock, date, favourites
 │       ├── DrawerScreen.kt      # search, app list, auto-focus, auto-launch
 │       ├── SettingsScreen.kt    # theme picker, toggles, favourites/hidden
@@ -78,9 +87,26 @@ app/src/main/
 │       └── theme/
 │           ├── Color.kt         # LauncherPalette, all 38 themes, colour accessors
 │           ├── Theme.kt         # provides the active palette + Material scheme
-│           └── Type.kt          # JetBrains Mono typography
+│           ├── Dimens.kt        # spacing/size tokens
+│           └── Type.kt          # JetBrains Mono typography + AppTextStyles
+├── res/values/strings.xml       # all user-visible text
+├── res/values-el/strings.xml    # Greek translation
 └── res/font/                    # JetBrains Mono ttf files
+app/src/test/                    # 172 JVM tests — no Robolectric, no device
 ```
+
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the layering rules, the
+concurrency model and — deliberately — what was *not* built and why.
+
+## Testing
+```bash
+./gradlew testDebugUnitTest        # 172 JVM tests
+./gradlew lintDebug                # lint is blocking
+./gradlew assembleDebug assembleRelease
+```
+Everything runs on the JVM. Compose UI behaviour, Activity lifecycle wiring,
+broadcast delivery and backup/restore need a device and are tracked in
+[`USER_STORIES.md`](USER_STORIES.md) (QA-3).
 
 ## Customising
 - **Colours / themes:** every theme lives in `ui/theme/Color.kt`. Each is built
@@ -92,10 +118,37 @@ app/src/main/
   composable accessors that read the currently selected theme, so screens never
   reference a fixed colour.
 
+## Releasing
+
+**Version scheme.** `versionCode = major * 10_000 + minor * 100 + patch`, so
+`1.2.3` is `10203`. Bump `versionCode` and `versionName` **together**:
+`BuildVersionTest` asserts they agree, so a mismatch fails the test suite instead of
+being discovered when Play rejects the upload. `minor` and `patch` must stay below
+100 for the encoding to be unambiguous (the test enforces that too).
+
+**Release builds** enable R8 and resource shrinking (~10.8 MB debug → ~1.7 MB
+release) and read signing credentials from `keystore.properties` (gitignored).
+Without that file the release build still runs so R8 can be verified, but produces
+an unsigned artifact.
+
+**Before distributing, the `applicationId` must change.** It is currently
+`com.example.minimallauncher`, and `com.example.*` is reserved by Google Play. This
+is deliberately left as a decision rather than guessed at:
+
+- choose an id on a domain you control (e.g. `dev.yourdomain.minimallauncher`);
+- it makes the app a *different* app to the platform, so existing installs become a
+  fresh install and their DataStore settings (favourites, hidden apps, theme) are
+  **not** migrated automatically. Either accept that, or add an explicit migration
+  before releasing under the new id;
+- `namespace` can stay as it is — it only names the generated `R`/`BuildConfig`
+  classes, so it does not have to follow the application id.
+
 ## Possible next steps
 - Drag-to-reorder favourites (currently shown in the order added).
 - Per-app rename / alias.
 - Hidden-apps unlock (reveal a hidden app only by typing its exact name).
 - Home gestures (swipe-down for notifications, double-tap to lock).
 - Work-profile / multi-user apps via `LauncherApps`.
-- A unit test for `TextNormalizer`, and R8 + a signing config for release builds.
+- Remaining backlog items are tracked in [`USER_STORIES.md`](USER_STORIES.md); the
+  known gaps are the device-only tests (QA-3), on-device backup restore (DATA-4)
+  and an R8 release smoke test (PERF-2).

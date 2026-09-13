@@ -11,6 +11,36 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MinimalLauncher">
 
+        <!--
+          This Activity *is* the device's home screen, so every attribute below is
+          load-bearing. See docs/ARCHITECTURE.md §3 and USER_STORIES.md PLAT-3.
+
+          launchMode="singleTask"
+            Required so that pressing Home while the launcher is already running
+            re-delivers the MAIN/HOME intent through onNewIntent instead of creating
+            a second instance. MainActivity resets to the home screen there.
+
+          stateNotNeeded="true"
+            The system may recreate this Activity *without* onSaveInstanceState. The
+            ViewModel therefore must not assume saved state exists: it seeds the
+            search query from SavedStateHandle but works with an empty handle, and
+            rememberSaveable state (the pager page, the settings flag) is treated as
+            best-effort rather than guaranteed.
+
+          configChanges
+            Absorbed so the launcher does not flicker or lose its position on a
+            rotation or a system-theme change. Note what is NOT listed: density and
+            fontScale still recreate the Activity, so those paths must work — they
+            are exercised by the tests and by PLAT-3's manual check.
+
+          windowSoftInputMode="adjustResize"
+            Pairs with enableEdgeToEdge; the drawer also applies imePadding().
+
+          enableOnBackInvokedCallback="true"
+            Opts into the platform back dispatcher, so androidx BackHandler
+            participates in predictive back instead of the legacy path (which is
+            deprecated and removed for apps targeting later SDKs).
+        -->
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"
@@ -18,6 +48,7 @@
             android:stateNotNeeded="true"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
+            android:enableOnBackInvokedCallback="true"
             android:theme="@style/Theme.MinimalLauncher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -28,11 +59,23 @@
         </activity>
     </application>
 
-    <!-- Required on Android 11+ to see other installed apps via PackageManager -->
+    <!--
+      Required on Android 11+ to see other installed apps via PackageManager.
+
+      The MAIN/LAUNCHER entry is what lets the launcher enumerate apps at all. The
+      APP_CALENDAR entry is what lets it *resolve* a calendar by capability: without
+      it, queryIntentActivities/resolveActivity would not see a calendar app that
+      does not also match the launcher query, and the date tap would fail on devices
+      where the calendar is not a launcher app.
+    -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_CALENDAR" />
         </intent>
     </queries>
 
